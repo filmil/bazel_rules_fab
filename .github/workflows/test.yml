@@ -178,3 +178,44 @@ jobs:
         env:
           USE_BAZEL_VERSION: ${{ matrix.bazel }}
         run: bazel test //...
+
+  # Spec D1: two clean builds give byte-identical outputs. Every target of a
+  # determinism_test is built in two fresh output bases with no shared
+  # cache, and the SHA-256 of every output file is compared.
+  determinism:
+    runs-on: ubuntu-latest
+    container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
+    steps:
+      - name: Install bazelisk
+        run: |
+          set -o errexit -o nounset -o pipefail
+          curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum -c -
+          chmod +x /usr/local/bin/bazel
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build in two output bases and compare
+        run: |
+          set -o errexit -o nounset -o pipefail
+          q='labels(target_a, attr(expect, "^same$", kind("raw_determinism_test rule", //...)))'
+          targets=$(bazel query "$q" | tr '\n' ' ')
+          if [ -z "${targets}" ]; then echo "no determinism_test targets"; exit 0; fi
+          echo "targets: ${targets}"
+          # Each output base has its own server. They are not shut down: in a
+          # container with no init process, `bazel shutdown` cannot reap the
+          # server and fails.
+          for b in one two; do
+            ob="${HOME}/ob_${b}"
+            bazel --output_base="${ob}" build --disk_cache= --noremote_accept_cached ${targets}
+            root="$(bazel --output_base="${ob}" info execution_root)"
+            bazel --output_base="${ob}" cquery --output=files "set(${targets})" > "${HOME}/files_${b}"
+            (cd "${root}" && while read -r f; do
+              find -L "${f}" -type f -print0 | sort -z | xargs -0 sha256sum
+            done < "${HOME}/files_${b}") > "${HOME}/sums_${b}"
+          done
+          cat "${HOME}/sums_one"
+          diff -u "${HOME}/sums_one" "${HOME}/sums_two"
+          echo "identical in two output bases"

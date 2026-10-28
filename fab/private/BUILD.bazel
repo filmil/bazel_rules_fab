@@ -1,12 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 
 bzl_library(
     name = "private",
     srcs = [
+        "determinism.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
         "toolchains.bzl",
     ],
     visibility = ["//fab:__subpackages__"],
+)
+
+# A setting that changes nothing but the configuration. determinism_test
+# builds its target once with "a" and once with "b", so every action runs
+# twice, with different output paths.
+string_flag(
+    name = "determinism_salt",
+    build_setting_default = "",
+    visibility = ["//visibility:public"],
 )

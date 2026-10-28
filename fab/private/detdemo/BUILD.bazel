@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# determinism_test's own tests: it passes on a deterministic target and
+# detects a non-deterministic one (spec T3).
+load("//fab:defs.bzl", "determinism_test", "tool_toolchain")
+load("//fab/private:determinism.bzl", "raw_determinism_test")
+load(":clock.bzl", "clock_rule")
+
+toolchain_type(name = "clock_toolchain_type")
+
+tool_toolchain(
+    name = "clock_impl",
+    tools = {"//fab/private/clock": "clock"},
+)
+
+toolchain(
+    name = "clock",
+    toolchain = ":clock_impl",
+    toolchain_type = ":clock_toolchain_type",
+)
+
+clock_rule(name = "now")
+
+# The swap demo's real tool writes a constant: the same bytes every time.
+determinism_test(
+    name = "deterministic_test",
+    size = "small",
+    target = "//fab/private/swapdemo:demo",
+)
+
+# A tree artifact: the comparer walks the directory.
+determinism_test(
+    name = "deterministic_dir_test",
+    size = "small",
+    target = "//fab/private/swapdemo:demo_dir",
+)
+
+# The clock writes the time: the two builds must differ, and the comparer
+# must see it.
+raw_determinism_test(
+    name = "detects_time_test",
+    size = "small",
+    expect = "different",
+    target_a = ":now",
+    target_b = ":now",
+)
