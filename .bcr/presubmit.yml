@@ -3,9 +3,9 @@
 # release being published. That directory exists in this repository and is
 # runnable locally with `cd integration && bazel test //...`.
 #
-# v1 supports Linux x86_64 only (spec requirement P1): the KiCad toolchain
-# it builds on exists for linux-x86_64 only. Add a
-# platform when its prebuilt exists.
+# v1 supports Linux x86_64 only (spec requirement P1), as do the other
+# hardware modules. The packager and checker are Go, built from source, so
+# a platform can be added once the module's tests run there.
 bcr_test_module:
   module_path: "integration"
   matrix:

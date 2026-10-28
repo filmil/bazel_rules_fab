@@ -36,7 +36,7 @@ the change.
 6. One logical change per pull request: one rule, one feature, or one
    design change.
 7. Stop and ask the operator before you:
-   * change or remove an ERC, DRC or fab rule file;
+   * change or remove a DRC or fab rule file;
    * delete a test, or make a tolerance larger;
    * change a toolchain version or a library version;
    * run a release or publish workflow, or set a secret.

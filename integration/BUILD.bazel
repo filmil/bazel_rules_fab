@@ -8,11 +8,17 @@ load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_fab//fab:defs.bzl", "RULES_FAB_API_VERSION")
 
-# The public package loads and builds.
+# The public packages load and build: the rules, and the root package
+# with the --@rules_fab//:tools flag that every user's build reads.
 build_test(
     name = "public_api_builds",
     size = "small",
-    targets = ["@rules_fab//fab:defs"],
+    targets = [
+        "@rules_fab//:tools",
+        "@rules_fab//:tools_prebuilt",
+        "@rules_fab//:tools_source",
+        "@rules_fab//fab:defs",
+    ],
 )
 
 # The module resolved here is the one this consumer was written for.
