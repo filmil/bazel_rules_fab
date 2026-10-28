@@ -32,6 +32,25 @@ helpers_toolchain = rule(
     },
 )
 
+UNSUPPORTED_PLATFORM_MESSAGE = (
+    "rules_fab v1 supports only Linux x86_64 hosts (@platforms//os:linux, " +
+    "@platforms//cpu:x86_64). This build's execution platform is another one. " +
+    "See https://github.com/filmil/bazel_rules_fab#using-it"
+)
+
+def _unsupported_platform_toolchain_impl(_ctx):
+    fail(UNSUPPORTED_PLATFORM_MESSAGE)
+
+unsupported_platform_toolchain = rule(
+    implementation = _unsupported_platform_toolchain_impl,
+    doc = """A toolchain that fails analysis with a clear message (spec P1).
+
+It is registered after the real toolchains, with no constraints, so Bazel
+picks it only when no real toolchain matches the execution platform. A
+toolchain resolution error alone does not say which platforms work.
+""",
+)
+
 def _tool_toolchain_impl(ctx):
     tools = {}
     for target, name in ctx.attr.tools.items():

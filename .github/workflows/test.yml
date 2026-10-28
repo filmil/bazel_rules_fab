@@ -111,6 +111,15 @@ jobs:
       - name: Hermeticity lint
         run: bazel run //tools/lint
 
+      # Spec P1: on another host, analysis fails and says which host works.
+      - name: Unsupported host fails with a clear message
+        run: |
+          set -o nounset -o pipefail
+          if bazel build --host_platform=//tests/platform:macos_arm64 //fab/private/swapdemo:demo > "${HOME}/p1.log" 2>&1; then
+            echo "the build succeeded on an unsupported host"; exit 1
+          fi
+          grep -F "rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
+
       # Fails when a dependency is only in the filmil registry: the BCR
       # would then reject the module.
       - name: Dependencies resolve from the BCR alone

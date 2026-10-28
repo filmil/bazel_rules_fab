@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Spec P1: other platforms fail at analysis time with a clear message.
+load(":platform_test.bzl", "fallback_fails_test")
+
+# The fallback toolchain fails analysis with the message users see on an
+# unsupported host.
+fallback_fails_test(
+    name = "fallback_message_test",
+    size = "small",
+    target_under_test = "//fab/toolchains:unsupported_impl",
+)
+
+# A host that rules_fab v1 does not support, for the CI step that builds
+# with --host_platform set to it and expects the message above.
+platform(
+    name = "macos_arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:aarch64",
+    ],
+)
