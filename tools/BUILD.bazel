@@ -6,6 +6,8 @@ load("@buildifier_prebuilt//:rules.bzl", "buildifier")
 # bazel run //tools:buildifier
 buildifier(
     name = "buildifier",
+    # Lint fixtures are deliberately bad; formatting would move their lines.
+    exclude_patterns = ["./tools/lint/testdata/*"],
     lint_mode = "warn",
     mode = "fix",
 )
@@ -13,6 +15,8 @@ buildifier(
 # bazel run //tools:buildifier_check: fails on any file that is not formatted.
 buildifier(
     name = "buildifier_check",
+    # Lint fixtures are deliberately bad; formatting would move their lines.
+    exclude_patterns = ["./tools/lint/testdata/*"],
     lint_mode = "warn",
     mode = "check",
 )
