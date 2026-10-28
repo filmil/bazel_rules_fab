@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Test
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Once a week, so a break caused by a moving dependency is noticed even
+    # when nothing lands.
+    - cron: "43 7 * * 0"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      # The cache key carries the current UTC date, so an entry is only
+      # restored on the day it was written. That gives the build cache a 24
+      # hour lifetime. The restore-keys line still seeds a new day from the
+      # previous day's entry, so the first build of the day starts warm.
+      - name: Compute the daily cache key
+        id: cachekey
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache build artifacts
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/bazel
+          key: ${{ runner.os }}-bazel-${{ steps.cachekey.outputs.day }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
+
+      - name: Build
+        run: bazel build //...
+
+      # Includes the docs check: it fails while docs/ differs from the .bzl
+      # files.
+      - name: Test
+        run: bazel test //...
+
+      - name: Formatting
+        run: bazel run //tools:buildifier_check
+
+      # Fails when a dependency is only in the filmil registry: the BCR
+      # would then reject the module.
+      - name: Dependencies resolve from the BCR alone
+        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        bazel: ["8.x", "9.x"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup bazel
+        uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-integration-${{ matrix.bazel }}
+          repository-cache: true
+
+      # The registry presubmit resolves this module from the BCR alone.
+      - name: Integration dependencies resolve from the BCR alone
+        working-directory: integration
+        env:
+          USE_BAZEL_VERSION: ${{ matrix.bazel }}
+        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+      - name: Test the integration module with Bazel ${{ matrix.bazel }}
+        working-directory: integration
+        env:
+          USE_BAZEL_VERSION: ${{ matrix.bazel }}
+        run: bazel test //...
