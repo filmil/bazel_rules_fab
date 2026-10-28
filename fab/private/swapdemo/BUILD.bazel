@@ -8,7 +8,8 @@
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@rules_go//go:def.bzl", "go_binary")
 load("//fab:defs.bzl", "swap_test", "tool_toolchain")
-load(":echo.bzl", "echo_rule")
+load("//fab/private:swap_test.bzl", "raw_swap_test")
+load(":echo.bzl", "echo_rule", "no_tool_rule")
 
 toolchain_type(name = "echo_toolchain_type")
 
@@ -52,9 +53,32 @@ diff_test(
     file2 = "expected_real.txt",
 )
 
-# Built with the stub, every output carries the stub's record.
+# A tree artifact: the tool writes files into a directory Bazel made.
+echo_rule(
+    name = "demo_dir",
+    directory = True,
+)
+
+# Built with the stub, every output carries the stub's record, inside the
+# tree artifact too.
 swap_test(
     name = "swap_test",
     size = "small",
-    targets = [":demo"],
+    targets = [
+        ":demo",
+        ":demo_dir",
+    ],
+)
+
+# An output written without any tool must be found (spec T3).
+no_tool_rule(name = "no_tool")
+
+raw_swap_test(
+    name = "detects_foreign_output_test",
+    size = "small",
+    expect = "foreign",
+    targets = [
+        ":demo",
+        ":no_tool",
+    ],
 )

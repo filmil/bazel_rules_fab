@@ -61,7 +61,8 @@ def run_tool(
     for k in sorted(env.keys()):
         pre.add("--env", "%s=%s" % (k, env[k]))
     for out in outputs:
-        pre.add("--output", out)
+        # The path, so a directory output (a tree artifact) is one value.
+        pre.add("--output", out.path)
     pre.add("--")
     pre.add(exe.executable)
 

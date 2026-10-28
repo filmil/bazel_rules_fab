@@ -27,18 +27,15 @@ config_setting(
 helpers_toolchain(
     name = "helpers_impl",
     launcher = "//fab/private/launcher",
-    stub = "//fab/private/stub",
     swapcheck = "//fab/private/swapcheck",
 )
 
-# Linux x86_64 only in v1 (spec P1).
+# The helpers run on Linux x86_64 only in v1 (spec P1). The outputs of the
+# rules are files for any platform, so the target platform is not
+# constrained here; issue #6 adds the analysis-time check for other hosts.
 toolchain(
     name = "helpers",
     exec_compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
-    target_compatible_with = [
         "@platforms//os:linux",
         "@platforms//cpu:x86_64",
     ],
