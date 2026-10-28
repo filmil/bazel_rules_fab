@@ -13,3 +13,9 @@ sh_test(
     srcs = ["t.sh"],
     tags = ["requires-root"],
 )
+
+sh_test(
+    name = "allowed_fakeroot",
+    srcs = ["t.sh"],
+    tags = ["requires-fakeroot"],
+)

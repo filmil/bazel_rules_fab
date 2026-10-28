@@ -91,8 +91,9 @@ func TestEveryBadFixtureIsChecked(t *testing.T) {
 // allowlisted exception tags (single-quoted names too) pass.
 func TestGoodFixturesPass(t *testing.T) {
 	allow := Allowlist{
-		"good:allowed_network": "a person approved it",
-		"good:allowed_root":    "a person approved it",
+		"good:allowed_network":  "a person approved it",
+		"good:allowed_root":     "a person approved it",
+		"good:allowed_fakeroot": "a person approved it",
 	}
 	for _, f := range []string{
 		"testdata/good/clean.BUILD",
