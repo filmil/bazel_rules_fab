@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The swap test template (spec section "Toolchains", requirement 7). A toy
+# tool, "echo", has a real toolchain and a stub one; the flag
+# //fab/toolchains:use_stub picks between them. Each module's e2e
+# targets get the same treatment once they run real tools. It lives under
+# private/ because its rule uses run_tool.
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@rules_go//go:def.bzl", "go_binary")
+load("//fab:defs.bzl", "swap_test", "tool_toolchain")
+load(":echo.bzl", "echo_rule")
+
+toolchain_type(name = "echo_toolchain_type")
+
+go_binary(
+    name = "real_echo",
+    srcs = ["real_echo/main.go"],
+    pure = "on",
+)
+
+tool_toolchain(
+    name = "real_impl",
+    tools = {":real_echo": "echo"},
+)
+
+tool_toolchain(
+    name = "stub_impl",
+    tools = {"//fab/private/stub": "echo"},
+)
+
+toolchain(
+    name = "real",
+    target_settings = ["//fab/toolchains:stub_off"],
+    toolchain = ":real_impl",
+    toolchain_type = ":echo_toolchain_type",
+)
+
+toolchain(
+    name = "stub",
+    target_settings = ["//fab/toolchains:stub_on"],
+    toolchain = ":stub_impl",
+    toolchain_type = ":echo_toolchain_type",
+)
+
+echo_rule(name = "demo")
+
+# Built normally, the demo runs the real tool.
+diff_test(
+    name = "real_tool_test",
+    size = "small",
+    file1 = ":demo",
+    file2 = "expected_real.txt",
+)
+
+# Built with the stub, every output carries the stub's record.
+swap_test(
+    name = "swap_test",
+    size = "small",
+    targets = [":demo"],
+)

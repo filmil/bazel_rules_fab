@@ -82,6 +82,8 @@ var (
 	reLocal    = regexp.MustCompile(`\blocal\s*=\s*(?:True|1)\b`)
 	reTags     = regexp.MustCompile(`\b(?:tags|execution_requirements)\s*=[^=]`)
 	reNameAttr = regexp.MustCompile(`\bname\s*=[^=]`)
+	reActions  = regexp.MustCompile(`\bactions\.run(?:_shell)?\s*\(`)
+	reAttrLbl  = regexp.MustCompile(`\battr\.label(?:_list|_keyed_string_dict)?\s*\(`)
 )
 
 // Allowlist maps a target, as "path/to/package:name", to the reason a person
@@ -307,6 +309,36 @@ func scanStarlark(path, pkg, src string, allow Allowlist) []Finding {
 		}
 	}
 
+	// Every action runs its tool through run_tool (spec "Toolchains",
+	// requirement 3), which lives in a file named private/run_tool.bzl.
+	if !strings.HasSuffix(filepath.ToSlash(path), RunToolFile) {
+		for _, loc := range reActions.FindAllStringIndex(masked, -1) {
+			out = append(out, Finding{path, lineAt(loc[0]), "action-outside-run-tool",
+				"start actions that run a tool through run_tool, in " + RunToolFile})
+		}
+	}
+
+	// A private attribute must not name a tool in another repository
+	// (requirement 2): tools come from ctx.toolchains.
+	for _, t := range strs {
+		rest := strings.TrimLeft(masked[t.end:], " \t")
+		if !strings.HasPrefix(t.val, "_") || !strings.HasPrefix(rest, ":") {
+			continue
+		}
+		from := t.end + (len(masked[t.end:]) - len(rest)) + 1
+		to := exprEnd(masked, d, from)
+		if !reAttrLbl.MatchString(masked[from:to]) {
+			continue
+		}
+		for _, v := range strs {
+			if v.start >= from && v.start < to && external(v.val) {
+				out = append(out, Finding{path, lineAt(t.start), "private-tool-attr",
+					fmt.Sprintf("private attribute %q names %q; get tools from ctx.toolchains", t.val, v.val)})
+				break
+			}
+		}
+	}
+
 	// Values that act as tags: every string in a tags or
 	// execution_requirements expression (a list, a concatenation, a select,
 	// a dict), and every string used as a dict key anywhere, which covers
@@ -359,6 +391,23 @@ func scanStarlark(path, pkg, src string, allow Allowlist) []Finding {
 		}
 	}
 	return out
+}
+
+// RunToolFile is the only file allowed to start actions that run tools.
+const RunToolFile = "private/run_tool.bzl"
+
+// external reports whether a label names another repository. Bazel's own
+// repositories are fine.
+func external(label string) bool {
+	if !strings.HasPrefix(label, "@") {
+		return false
+	}
+	for _, ok := range []string{"@bazel_tools//", "@platforms//", "@@bazel_tools//", "@@platforms//"} {
+		if strings.HasPrefix(label, ok) {
+			return false
+		}
+	}
+	return true
 }
 
 // lineIndex returns a function from byte offset to 1-based line number.

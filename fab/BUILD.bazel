@@ -5,6 +5,14 @@ bzl_library(
     name = "defs",
     srcs = ["defs.bzl"],
     visibility = ["//visibility:public"],
+    deps = ["//fab/private"],
+)
+
+# The toolchain type of this module's own Go helpers: the launcher that
+# every action runs through, and the stub and checker of swap_test.
+toolchain_type(
+    name = "helpers_toolchain_type",
+    visibility = ["//visibility:public"],
 )
 
 exports_files(

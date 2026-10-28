@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("//fab/private:toolchains.bzl", "helpers_toolchain")
+
+# --@rules_fab//fab/toolchains:use_stub swaps every tool for the stub.
+# swap_test sets it with a transition. A tool toolchain honors it by
+# carrying target_settings = [":stub_off"], and its stub twin
+# target_settings = [":stub_on"].
+bool_flag(
+    name = "use_stub",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "stub_on",
+    flag_values = {":use_stub": "true"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "stub_off",
+    flag_values = {":use_stub": "false"},
+    visibility = ["//visibility:public"],
+)
+
+helpers_toolchain(
+    name = "helpers_impl",
+    launcher = "//fab/private/launcher",
+    stub = "//fab/private/stub",
+    swapcheck = "//fab/private/swapcheck",
+)
+
+# Linux x86_64 only in v1 (spec P1).
+toolchain(
+    name = "helpers",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    toolchain = ":helpers_impl",
+    toolchain_type = "//fab:helpers_toolchain_type",
+)
