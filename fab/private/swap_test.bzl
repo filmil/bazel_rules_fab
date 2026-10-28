@@ -27,35 +27,52 @@ def _swap_test_impl(ctx):
     return [
         DefaultInfo(executable = exe, runfiles = runfiles),
         RunEnvironmentInfo(environment = {
-            "SWAP_FILES": " ".join([f.short_path for f in files]),
+            "SWAP_EXPECT": ctx.attr.expect,
+            # One path per line: a path may hold spaces.
+            "SWAP_FILES": "\n".join([f.short_path for f in files]),
         }),
     ]
 
-swap_test = rule(
+raw_swap_test = rule(
     implementation = _swap_test_impl,
     test = True,
-    doc = """Builds targets with every tool swapped for a stub, and checks them.
-
-The targets are built with `--@rules_fab//fab/toolchains:use_stub`, so
-each tool toolchain that honors the flag resolves to the stub tool. The stub
-writes a record into every output. The test fails if any output file of the
-targets lacks the record: some action made it without a toolchain tool.
-
-Example:
-
-```starlark
-swap_test(
-    name = "swap_test",
-    targets = [":gerbers", ":bom"],
-)
-```
-""",
+    doc = "The rule behind swap_test. Use the macro.",
     attrs = {
         "targets": attr.label_list(
             doc = "Targets whose outputs must all come from the stub.",
             cfg = _stub_transition,
             mandatory = True,
         ),
+        "expect": attr.string(
+            doc = "\"stub\", or \"foreign\" for this rule's own known-bad test.",
+            default = "stub",
+            values = ["stub", "foreign"],
+        ),
     },
     toolchains = [HELPERS_TOOLCHAIN_TYPE],
 )
+
+def swap_test(name, targets, **kwargs):
+    """Builds targets with every tool swapped for a stub, and checks them.
+
+    The targets are built with `--@rules_fab//fab/toolchains:use_stub`,
+    so each tool toolchain that honors the flag resolves to the stub tool.
+    The stub writes a record into every output, files and directories
+    alike. The test fails if any output file of the targets lacks the
+    record: some action made it without a toolchain tool.
+
+    Example:
+
+    ```starlark
+    swap_test(
+        name = "swap_test",
+        targets = [":gerbers", ":bom"],
+    )
+    ```
+
+    Args:
+      name: the test's name.
+      targets: targets whose outputs must all come from the stub.
+      **kwargs: common test attributes, such as `size` and `tags`.
+    """
+    raw_swap_test(name = name, targets = targets, **kwargs)

@@ -27,7 +27,7 @@ func TestParse(t *testing.T) {
 func TestEnvironPointsInsideHome(t *testing.T) {
 	r := Request{HomeEnv: []string{"KICAD_CONFIG_HOME"}, Env: []string{"HOME=/never", "X=1"}, Outputs: []string{"a", "b"}}
 	env := map[string]string{}
-	for _, kv := range Environ([]string{"HOME=/host/home", "PATH=/bin:/usr/bin", "XDG_CONFIG_HOME=/host/cfg"}, "/act/h", r) {
+	for _, kv := range Environ([]string{"HOME=/host/home", "PATH=/bin:/usr/bin", "XDG_CONFIG_HOME=/host/cfg", "DISPLAY=:0", "XDG_RUNTIME_DIR=/run/user/1"}, "/act/h", r) {
 		k, v, _ := strings.Cut(kv, "=")
 		env[k] = v
 	}
@@ -46,6 +46,11 @@ func TestEnvironPointsInsideHome(t *testing.T) {
 			t.Errorf("%s = %q, want %q", k, env[k], want)
 		}
 	}
+	for _, k := range []string{"DISPLAY", "XDG_RUNTIME_DIR"} {
+		if _, ok := env[k]; ok {
+			t.Errorf("%s reached the tool", k)
+		}
+	}
 }
 
 // TestMain lets the test binary stand in for a tool: with
@@ -58,6 +63,11 @@ func TestMain(m *testing.M) {
 			if err := os.WriteFile(p, nil, 0o644); err != nil {
 				os.Exit(10)
 			}
+		}
+		// A read-only directory must not stop the cleanup.
+		ro := filepath.Join(home, "ro")
+		if os.Mkdir(ro, 0o755) != nil || os.WriteFile(filepath.Join(ro, "f"), nil, 0o444) != nil || os.Chmod(ro, 0o500) != nil {
+			os.Exit(12)
 		}
 		if err := os.WriteFile(os.Args[1], []byte(home+"|"+cfg+"|"+own), 0o644); err != nil {
 			os.Exit(11)

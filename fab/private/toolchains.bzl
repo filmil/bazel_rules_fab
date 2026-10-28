@@ -5,15 +5,14 @@ Every tool an action or a test runs comes from a toolchain (spec section
 "Toolchains"). A tool toolchain returns `platform_common.ToolchainInfo`
 with a `tools` dict, from tool name to `FilesToRunProvider`; `run_tool`
 looks a tool up there by name. The helpers toolchain brings this module's
-own Go helpers: the launcher every action runs through, and the stub and
-checker of the swap test.
+own Go helpers: the launcher every action runs through, and the checker of
+the swap test. The stub tool is used directly by stub tool toolchains.
 """
 
 HelpersInfo = provider(
     doc = "The Go helpers that run_tool and swap_test use.",
     fields = {
         "launcher": "FilesToRunProvider: runs a tool with a private home.",
-        "stub": "FilesToRunProvider: stands in for any tool in swap tests.",
         "swapcheck": "DefaultInfo of the swap test's checker (a target binary).",
     },
 )
@@ -21,16 +20,14 @@ HelpersInfo = provider(
 def _helpers_toolchain_impl(ctx):
     return [platform_common.ToolchainInfo(helpers = HelpersInfo(
         launcher = ctx.attr.launcher[DefaultInfo].files_to_run,
-        stub = ctx.attr.stub[DefaultInfo].files_to_run,
         swapcheck = ctx.attr.swapcheck[DefaultInfo],
     ))]
 
 helpers_toolchain = rule(
     implementation = _helpers_toolchain_impl,
-    doc = "The helpers toolchain: launcher, stub and swap checker.",
+    doc = "The helpers toolchain: the launcher and the swap checker.",
     attrs = {
         "launcher": attr.label(mandatory = True, executable = True, cfg = "exec"),
-        "stub": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "swapcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
     },
 )
@@ -40,19 +37,29 @@ def _tool_toolchain_impl(ctx):
     for target, name in ctx.attr.tools.items():
         if name in tools:
             fail("tool name %r appears twice" % name)
-        tools[name] = target[DefaultInfo].files_to_run
+        files_to_run = target[DefaultInfo].files_to_run
+        if files_to_run == None or files_to_run.executable == None:
+            fail("tool %r: %s is not executable" % (name, target.label))
+        tools[name] = files_to_run
     return [platform_common.ToolchainInfo(tools = tools)]
 
 tool_toolchain = rule(
     implementation = _tool_toolchain_impl,
     doc = """A toolchain that offers tools by name, for `run_tool`.
 
-Example, a stub toolchain for the swap test:
+Example, a toolchain for another build of the fab packager (the toolchain
+type arrives with this module's toolchain issue):
 
 ```starlark
 tool_toolchain(
-    name = "stub_impl",
-    tools = {"//fab/private/stub": "packager"},
+    name = "my_packager_impl",
+    tools = {"//third_party/packager:packager": "packager"},
+)
+
+toolchain(
+    name = "my_packager",
+    toolchain = ":my_packager_impl",
+    toolchain_type = "@rules_fab//fab:toolchain_type",
 )
 ```
 """,

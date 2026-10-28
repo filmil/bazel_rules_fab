@@ -70,8 +70,17 @@ func Parse(args []string) (Request, error) {
 	return r, errors.New("missing -- before the tool")
 }
 
-// Environ returns the tool's environment: base, with the home variables
-// pointing inside home, then the fixed --env values, which win.
+// Dropped are variables that would connect a tool to the host's desktop or
+// user session. Bazel's strict action environment does not pass them, but
+// an action run some other way might.
+var Dropped = []string{
+	"DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS",
+	"XDG_RUNTIME_DIR", "XDG_CONFIG_DIRS", "XDG_DATA_DIRS", "XAUTHORITY",
+}
+
+// Environ returns the tool's environment: base without the Dropped
+// variables, with the home variables pointing inside home, then the fixed
+// --env values, which win.
 func Environ(base []string, home string, r Request) []string {
 	set := map[string]string{}
 	var order []string
@@ -81,9 +90,15 @@ func Environ(base []string, home string, r Request) []string {
 		}
 		set[k] = v
 	}
+	drop := map[string]bool{}
+	for _, k := range Dropped {
+		drop[k] = true
+	}
 	for _, kv := range base {
 		k, v, _ := strings.Cut(kv, "=")
-		put(k, v)
+		if !drop[k] {
+			put(k, v)
+		}
 	}
 	put("HOME", home)
 	put("TMPDIR", filepath.Join(home, "tmp"))
@@ -132,7 +147,7 @@ func Run(r Request, dir string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer os.RemoveAll(home)
+	defer removeAll(home)
 	for _, d := range Dirs(home, r) {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return 0, err
@@ -150,6 +165,18 @@ func Run(r Request, dir string) (int, error) {
 		return 0, err
 	}
 	return 0, nil
+}
+
+// removeAll removes dir even when the tool left read-only directories in
+// it.
+func removeAll(dir string) {
+	filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err == nil && d.IsDir() {
+			os.Chmod(p, 0o755)
+		}
+		return nil
+	})
+	os.RemoveAll(dir)
 }
 
 func main() {
