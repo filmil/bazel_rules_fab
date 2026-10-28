@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-load("//fab/private:toolchains.bzl", "helpers_toolchain")
+load("//fab/private:toolchains.bzl", "helpers_toolchain", "unsupported_platform_toolchain")
 
 # --@rules_fab//fab/toolchains:use_stub swaps every tool for the stub.
 # swap_test sets it with a transition. A tool toolchain honors it by
@@ -41,5 +41,21 @@ toolchain(
         "@platforms//cpu:x86_64",
     ],
     toolchain = ":helpers_impl",
+    toolchain_type = "//fab:helpers_toolchain_type",
+)
+
+# Any other execution platform: Bazel tries toolchains in the order they
+# are registered, and MODULE.bazel registers this one last, so it is
+# picked only where the one above does not match. Its analysis fails with
+# a message that says which platform is supported (spec P1).
+unsupported_platform_toolchain(
+    name = "unsupported_impl",
+    tags = ["manual"],
+    visibility = ["//tests:__subpackages__"],
+)
+
+toolchain(
+    name = "unsupported",
+    toolchain = ":unsupported_impl",
     toolchain_type = "//fab:helpers_toolchain_type",
 )

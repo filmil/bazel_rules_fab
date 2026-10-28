@@ -15,7 +15,11 @@ bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "rules_go", version = "0.64.2")
 
 # The helpers toolchain, which every rule that runs a tool needs.
-register_toolchains("//fab/toolchains:all")
+register_toolchains(
+    "//fab/toolchains:helpers",
+    # Last, so it is picked only off Linux x86_64 (spec P1).
+    "//fab/toolchains:unsupported",
+)
 
 # The demonstration tools of the swap test template
 # (fab/private/swapdemo) and of determinism_test's own tests
