@@ -36,7 +36,9 @@ func rulesAndLines(fs []Finding) []at {
 // give (spec T3: each check fails on its known-bad input). Extra findings
 // fail the test as well as missing ones.
 var badCases = map[string][]at{
-	"testdata/bad/shell_env.bzl":           {{"shell-env", 5}},
+	"testdata/bad/actions_run.bzl":         {{"action-outside-run-tool", 2}, {"action-outside-run-tool", 7}},
+	"testdata/bad/private_tool_attr.bzl":   {{"private-tool-attr", 5}, {"private-tool-attr", 10}},
+	"testdata/bad/shell_env.bzl":           {{"action-outside-run-tool", 2}, {"shell-env", 5}},
 	"testdata/bad/local_tag.BUILD":         {{"forbidden-tag", 7}},
 	"testdata/bad/no_sandbox_tag.BUILD":    {{"forbidden-tag", 5}},
 	"testdata/bad/local_attr.BUILD":        {{"forbidden-tag", 5}},
@@ -44,8 +46,8 @@ var badCases = map[string][]at{
 	"testdata/bad/network_tag.BUILD":       {{"exception-tag", 4}},
 	"testdata/bad/requires_root.BUILD":     {{"exception-tag", 1}},
 	"testdata/bad/macro_network.bzl":       {{"exception-tag", 4}},
-	"testdata/bad/exec_req.bzl":            {{"forbidden-tag", 6}},
-	"testdata/bad/exec_req_dict.bzl":       {{"exception-tag", 1}, {"forbidden-tag", 1}},
+	"testdata/bad/exec_req.bzl":            {{"action-outside-run-tool", 2}, {"forbidden-tag", 6}},
+	"testdata/bad/exec_req_dict.bzl":       {{"exception-tag", 1}, {"forbidden-tag", 1}, {"action-outside-run-tool", 4}},
 	"testdata/bad/action_env.bazelrc":      {{"host-env", 1}},
 	"testdata/bad/action_env_home.bazelrc": {{"host-env", 1}},
 	"testdata/bad/two_on_a_line.bazelrc":   {{"host-env", 1}, {"host-env", 1}},
@@ -99,6 +101,8 @@ func TestGoodFixturesPass(t *testing.T) {
 		"testdata/good/clean.BUILD",
 		"testdata/good/clean.bazelrc",
 		"testdata/good/strings.BUILD",
+		"testdata/good/private/run_tool.bzl",
+		"testdata/good/attrs.bzl",
 	} {
 		if got := scanFile(t, f, "good", allow); len(got) != 0 {
 			t.Errorf("%s: want no findings, got %v", f, got)
