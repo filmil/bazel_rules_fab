@@ -1,4 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
+#
+# Every build and test runs in a plain Debian 11 container: the oldest glibc
+# in the registry presubmit matrix, and no KiCad, FreeCAD or Python CAD
+# packages. A rule that reaches for a host tool fails here. .bazelrc keeps
+# --incompatible_strict_action_env and --sandbox_default_allow_network=false
+# on for every build, so CI and local builds run the same way.
+#
+# The image is buildpack-deps:bullseye-curl, pinned by digest: Debian 11
+# with curl and CA certificates and nothing else (no compiler, no git, no
+# Python). Debian 11's security archive has left the live mirrors, so
+# apt-get cannot install anything in a plain debian:11 image any more. The
+# only thing added is a pinned, checksummed bazelisk. Without git,
+# actions/checkout fetches the sources through the GitHub API.
+#
+# A test that cannot be hermetic carries an exception tag (for example
+# `requires-network`), is listed with its reason in the hermeticity lint's
+# allowlist (issue #3), is excluded in .bazelrc, and runs in a separate job
+# that says what it needs. There are none yet.
 name: Test
 on:
   push:
@@ -13,35 +31,68 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Steps in a container run under `sh` unless told otherwise, and Debian's
+# `sh` has no `pipefail`.
+defaults:
+  run:
+    shell: bash
+
+env:
+  BAZELISK_VERSION: v1.29.0
+  BAZELISK_SHA256: 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
     steps:
+      - name: Install bazelisk
+        run: |
+          set -o errexit -o nounset -o pipefail
+          curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum -c -
+          chmod +x /usr/local/bin/bazel
+
+      # The point of the container: none of these may be present, so a
+      # rule that works here does not depend on them.
+      - name: No CAD tools on the host
+        run: |
+          for t in kicad-cli kicad freecadcmd FreeCAD openscad python3 python gcc cc; do
+            if command -v "$t" >/dev/null 2>&1; then
+              echo "unexpected host tool: $t"; exit 1
+            fi
+          done
+
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
-        with:
-          bazelisk-cache: true
-          disk-cache: ${{ github.workflow }}
-          repository-cache: true
+      # Bazel keeps its disk cache and repository cache in two fixed
+      # directories, so the cache below holds only those, not an output
+      # base.
+      - name: Point Bazel at the cached directories
+        run: |
+          printf 'common --repository_cache=%s\nbuild --disk_cache=%s\n' \
+            "${HOME}/.cache/bazel-repo" "${HOME}/.cache/bazel-disk" \
+            | tee user.bazelrc integration/user.bazelrc
 
-      # The cache key carries the current UTC date, so an entry is only
-      # restored on the day it was written. That gives the build cache a 24
-      # hour lifetime. The restore-keys line still seeds a new day from the
-      # previous day's entry, so the first build of the day starts warm.
+      # The key carries the current UTC date and the run, so every run saves
+      # its cache, and a run restores only an entry written the same day.
+      # That gives the cache a 24 hour lifetime.
       - name: Compute the daily cache key
         id: cachekey
         run: echo "day=$(date -u +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
 
-      - name: Cache build artifacts
+      - name: Cache Bazel downloads and outputs
         uses: actions/cache@v6
         with:
-          path: ~/.cache/bazel
-          key: ${{ runner.os }}-bazel-${{ steps.cachekey.outputs.day }}
+          path: |
+            ~/.cache/bazel-repo
+            ~/.cache/bazel-disk
+            ~/.cache/bazelisk
+          key: test-${{ steps.cachekey.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            ${{ runner.os }}-bazel-
+            test-${{ steps.cachekey.outputs.day }}-
 
       - name: Build
         run: bazel build //...
@@ -61,20 +112,53 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
     strategy:
       fail-fast: false
       matrix:
         bazel: ["8.x", "9.x"]
     steps:
+      - name: Install bazelisk
+        run: |
+          set -o errexit -o nounset -o pipefail
+          curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum -c -
+          chmod +x /usr/local/bin/bazel
+
+      # The point of the container: none of these may be present, so a
+      # rule that works here does not depend on them.
+      - name: No CAD tools on the host
+        run: |
+          for t in kicad-cli kicad freecadcmd FreeCAD openscad python3 python gcc cc; do
+            if command -v "$t" >/dev/null 2>&1; then
+              echo "unexpected host tool: $t"; exit 1
+            fi
+          done
+
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup bazel
-        uses: bazel-contrib/setup-bazel@0.19.0
+      - name: Point Bazel at the cached directories
+        run: |
+          printf 'common --repository_cache=%s\nbuild --disk_cache=%s\n' \
+            "${HOME}/.cache/bazel-repo" "${HOME}/.cache/bazel-disk" \
+            | tee user.bazelrc integration/user.bazelrc
+
+      - name: Compute the daily cache key
+        id: cachekey
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache Bazel downloads and outputs
+        uses: actions/cache@v6
         with:
-          bazelisk-cache: true
-          disk-cache: ${{ github.workflow }}-integration-${{ matrix.bazel }}
-          repository-cache: true
+          path: |
+            ~/.cache/bazel-repo
+            ~/.cache/bazel-disk
+            ~/.cache/bazelisk
+          key: integration-${{ matrix.bazel }}-${{ steps.cachekey.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            integration-${{ matrix.bazel }}-${{ steps.cachekey.outputs.day }}-
 
       # The registry presubmit resolves this module from the BCR alone.
       - name: Integration dependencies resolve from the BCR alone
