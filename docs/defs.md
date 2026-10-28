@@ -75,8 +75,8 @@ Example:
 
 ```starlark
 determinism_test(
-    name = "gerbers_determinism_test",
-    target = ":gerbers",
+    name = "fab_jlc_determinism_test",
+    target = ":fab_jlc",
 )
 ```
 
