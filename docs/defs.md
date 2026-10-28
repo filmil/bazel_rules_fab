@@ -5,7 +5,7 @@ Public API of rules_fab.
 Load every rule from this file:
 
 ```starlark
-load("@rules_fab//fab:defs.bzl", "swap_test", "tool_toolchain")
+load("@rules_fab//fab:defs.bzl", "determinism_test", "swap_test", "tool_toolchain")
 ```
 
 The rules arrive in milestone M3 (see the issues of
@@ -47,6 +47,48 @@ toolchain(
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="tool_toolchain-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="tool_toolchain-tools"></a>tools |  Executable targets, each mapped to the name rules use for it.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: Label -> String</a> | required |  |
+
+
+<a id="determinism_test"></a>
+
+## determinism_test
+
+<pre>
+load("@rules_fab//fab:defs.bzl", "determinism_test")
+
+determinism_test(<a href="#determinism_test-name">name</a>, <a href="#determinism_test-target">target</a>, <a href="#determinism_test-kwargs">**kwargs</a>)
+</pre>
+
+Checks that two builds of `target` give byte-identical outputs.
+
+The target is built twice in one build, under two configurations that
+differ only in a setting no rule reads, so every action runs twice.
+The test compares the SHA-256 of every output file, directories walked,
+and fails on any difference (spec D1).
+
+Two runs in the same second can hide a time stamp with a one-second
+resolution, so pair this with a header scan where a format has one. CI
+also builds every determinism_test target in two fresh output bases and
+compares the results.
+
+Example:
+
+```starlark
+determinism_test(
+    name = "fab_jlc_determinism_test",
+    target = ":fab_jlc",
+)
+```
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="determinism_test-name"></a>name |  the test's name.   |  none |
+| <a id="determinism_test-target"></a>target |  the target whose outputs must not change between builds.   |  none |
+| <a id="determinism_test-kwargs"></a>kwargs |  common test attributes, such as `size` and `tags`.   |  none |
 
 
 <a id="swap_test"></a>

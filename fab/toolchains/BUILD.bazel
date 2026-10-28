@@ -26,6 +26,7 @@ config_setting(
 
 helpers_toolchain(
     name = "helpers_impl",
+    compare = "//fab/private/detcompare",
     launcher = "//fab/private/launcher",
     swapcheck = "//fab/private/swapcheck",
 )

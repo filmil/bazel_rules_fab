@@ -43,7 +43,11 @@ toolchain(
     toolchain_type = ":echo_toolchain_type",
 )
 
-echo_rule(name = "demo")
+# Also determinism_test's known-good input (fab/private/detdemo).
+echo_rule(
+    name = "demo",
+    visibility = ["//fab/private:__subpackages__"],
+)
 
 # Built normally, the demo runs the real tool.
 diff_test(
@@ -57,6 +61,7 @@ diff_test(
 echo_rule(
     name = "demo_dir",
     directory = True,
+    visibility = ["//fab/private:__subpackages__"],
 )
 
 # Built with the stub, every output carries the stub's record, inside the

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "detcompare_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/detcompare",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "detcompare",
+    embed = [":detcompare_lib"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "detcompare_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":detcompare_lib"],
+    pure = "on",
+)
