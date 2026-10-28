@@ -105,6 +105,12 @@ jobs:
       - name: Formatting
         run: bazel run //tools:buildifier_check
 
+      # The whole tree, integration/ included, for hermeticity escapes:
+      # host PATH or HOME in actions, unsandboxed tags, and exception tags
+      # not on the allowlist.
+      - name: Hermeticity lint
+        run: bazel run //tools/lint
+
       # Fails when a dependency is only in the filmil registry: the BCR
       # would then reject the module.
       - name: Dependencies resolve from the BCR alone
