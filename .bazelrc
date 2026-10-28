@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# My registry first, then the Bazel Central Registry. These are `common` and
+# not `build`, so that `bazel mod`, `bazel query` and `bazel fetch` consult the
+# same registries the build does.
+common \
+  --registry=https://raw.githubusercontent.com/filmil/bazel-registry/main \
+  --registry=https://bcr.bazel.build
+
+# Nothing is taken from the host: no C toolchain is detected, so a missing
+# hermetic one fails the build rather than falling back to the host's.
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+build --action_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+
+# Actions see a fixed PATH, not the host's, and have no network.
+build --incompatible_strict_action_env
+build --sandbox_default_allow_network=false
+
+# Use protobuf's prebuilt protoc (pinned by protobuf's own module), so no
+# protobuf C++ is compiled. With no host C++ toolchain, a target that still
+# needs one fails the build.
+common --incompatible_enable_proto_toolchain_resolution
+common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc
+
+# Add your local user settings to file `user.bazelrc`.
+try-import %workspace%/user.bazelrc
