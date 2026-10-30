@@ -1,0 +1,9 @@
+bazel_dep(name = "rules_fab", version = "0.0.0")
+local_path_override(
+    module_name = "rules_fab",
+    path = "..",
+)
+local_path_override(
+    module_name = "rules_fab",
+    path = "../again",
+)

@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# The release check that a module overrides no dependency (issue #7):
+#
+#   bazel run //tools/nooverrides -- "$PWD"
+#   bazel run //tools/nooverrides -- --allow_local_path=rules_fab "$PWD/integration"
+#
+# Tag and Release requires both; Test's bcr-ready job reports them.
+
+go_library(
+    name = "nooverrides_lib",
+    srcs = ["nooverrides.go"],
+    importpath = "github.com/filmil/bazel_rules_fab/tools/nooverrides",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "nooverrides_test",
+    size = "small",
+    srcs = ["nooverrides_test.go"],
+    data = glob(["testdata/*.txt"]),
+    embed = [":nooverrides_lib"],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+go_binary(
+    name = "nooverrides",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//visibility:private"],
+    deps = [":nooverrides_lib"],
+)

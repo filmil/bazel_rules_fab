@@ -162,12 +162,22 @@ jobs:
         working-directory: integration
         run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
 
+      # An override bypasses the registry, so the two checks above can pass
+      # with one; the same check as Tag and Release.
+      - name: The modules override no dependency
+        id: overrides
+        continue-on-error: true
+        run: |
+          set -o errexit -o nounset -o pipefail
+          bazel run //tools/nooverrides -- "${PWD}"
+          bazel run //tools/nooverrides -- --allow_local_path=rules_fab "${PWD}/integration"
+
       # The job stays green, so a failure shows as a warning annotation on
       # the run's summary page, not only in the step log.
       - name: Report what is not BCR-ready
-        if: steps.root.outcome == 'failure' || steps.integration.outcome == 'failure'
+        if: steps.root.outcome == 'failure' || steps.integration.outcome == 'failure' || steps.overrides.outcome == 'failure'
         run: |
-          echo "::warning title=Not BCR-ready::root: ${{ steps.root.outcome }}, integration: ${{ steps.integration.outcome }}. A release (Tag and Release) needs both."
+          echo "::warning title=Not BCR-ready::root: ${{ steps.root.outcome }}, integration: ${{ steps.integration.outcome }}, overrides: ${{ steps.overrides.outcome }}. A release (Tag and Release) needs all three."
 
   integration:
     runs-on: ubuntu-latest

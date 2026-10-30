@@ -1,0 +1,4 @@
+archive_override(
+    module_name = "rules_kicad",
+    urls = ["https://example.com/a.tar.gz"],
+)

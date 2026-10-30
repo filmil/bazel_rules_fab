@@ -25,10 +25,13 @@ Only Linux x86_64 hosts are supported.
 bazel_dep(name = "rules_fab", version = "0.1.0")
 ```
 
-rules_fab builds on rules_kicad, which is in no registry yet. Until it is,
-pin the same commit as rules_fab does, in your `MODULE.bazel` (an override
-counts only in the root module). It is GitHub's archive of that commit,
-checked by its hash, so the build needs no `git` on the host:
+That is for a release. rules_fab builds on rules_kicad, which is in no
+registry yet, and no release of rules_fab is made until it is (issue #7).
+To use rules_fab meanwhile, pin a commit of it with an
+`archive_override(module_name = "rules_fab", ...)` of GitHub's archive of
+that commit, and pin rules_kicad as rules_fab does, in your `MODULE.bazel`
+(an override counts only in the root module). Each is an archive checked
+by its hash, so the build needs no `git` on the host:
 
 ```starlark
 bazel_dep(name = "rules_kicad", version = "0.0.0")

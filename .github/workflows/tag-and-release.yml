@@ -102,16 +102,15 @@ jobs:
         working-directory: integration
         run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
 
-      # An override in the root module bypasses the registry, so the
-      # checks above pass with one; the BCR rejects a module that has one.
-      # (integration/'s local_path_override of rules_fab is replaced by the
-      # registry presubmit, so it is not checked.)
-      - name: The module overrides no dependency
+      # An override in a root module bypasses the registry, so the checks
+      # above pass with one; the BCR rejects a module that has one. This
+      # checks MODULE.bazel and integration/MODULE.bazel (all but its
+      # local_path_override of rules_fab).
+      - name: The modules override no dependency
         run: |
           set -o errexit -o nounset -o pipefail
-          if grep -nE '^[[:space:]]*(archive|git|local_path|single_version|multiple_version)_override\(' MODULE.bazel; then
-            echo "MODULE.bazel overrides a dependency; remove it before a release (issue #7)"; exit 1
-          fi
+          bazel run //tools/nooverrides -- "${PWD}"
+          bazel run //tools/nooverrides -- --allow_local_path=rules_fab "${PWD}/integration"
 
   tag:
     needs: [check, bcr_ready]
