@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# fab_package (issue #9) on fixture files in the shape of rules_kicad's
+# fab_package (issues #9, #10) on fixture files in the shape of rules_kicad's
 # outputs (board/): the ZIP's entries and CSVs, a rotation correction, the
 # same bytes in two configurations.
 load("@rules_go//go:def.bzl", "go_test")
@@ -33,17 +33,29 @@ fab_package(
     vendor = "jlcpcb",
 )
 
+fab_package(
+    name = "pcbway",
+    board_name = "main",
+    bom = "board/bom.csv",
+    drill = "board/drill/main.drl",
+    gerbers = ":gerbers",
+    pos = "board/pos.csv",
+    vendor = "pcbway",
+)
+
 go_test(
-    name = "jlcpcb_zip_test",
+    name = "zip_test",
     size = "small",
     srcs = ["zip_test.go"],
     args = [
         "--zip=$(rlocationpath :jlcpcb)",
         "--rotated=$(rlocationpath :jlcpcb_rotated)",
+        "--pcbway=$(rlocationpath :pcbway)",
     ],
     data = [
         ":jlcpcb",
         ":jlcpcb_rotated",
+        ":pcbway",
     ],
     pure = "on",
     deps = ["@rules_go//go/runfiles"],
@@ -53,4 +65,10 @@ determinism_test(
     name = "jlcpcb_determinism_test",
     size = "small",
     target = ":jlcpcb",
+)
+
+determinism_test(
+    name = "pcbway_determinism_test",
+    size = "small",
+    target = ":pcbway",
 )

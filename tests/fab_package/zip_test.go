@@ -16,6 +16,7 @@ import (
 var (
 	zipPath = flag.String("zip", "", "the JLCPCB package, as a runfiles path")
 	rotated = flag.String("rotated", "", "the same with a rotation correction")
+	pcbwayZ = flag.String("pcbway", "", "the PCBWay package, as a runfiles path")
 )
 
 func entries(t *testing.T, rpath string) map[string]string {
@@ -76,5 +77,27 @@ func TestRotation(t *testing.T) {
 	}
 	if !strings.Contains(cpl, "R1,115.0000mm,-100.0000mm,Bottom,90\n") {
 		t.Errorf("R1 is turned:\n%s", cpl)
+	}
+}
+
+func TestPCBWay(t *testing.T) {
+	e := entries(t, *pcbwayZ)
+	want := "main-B_Cu.gbl main-B_Mask.gbs main-B_Paste.gbp main-B_Silkscreen.gbo " +
+		"main-Edge_Cuts.gm1 main-F_Cu.gtl main-F_Mask.gts main-F_Paste.gtp " +
+		"main-F_Silkscreen.gto main.drl main_bom.csv main_centroid.csv"
+	if e[""] != want {
+		t.Errorf("entries\n %s\nwant\n %s", e[""], want)
+	}
+	if bom := "Item #,Designator,Qty,Manufacturer,Mfg Part #,Description / Value,Package/Footprint,Type,Your Instructions / Notes\n" +
+		"1,D1,1,Lite-On,LTST-C191KRKT,LED,LED_0603_1608Metric,,\n" +
+		"2,J1,1,,,Power,PinHeader_1x02_P2.54mm_Vertical,,\n" +
+		"3,R1,1,,,1k,R_0603_1608Metric,,\n"; e["main_bom.csv"] != bom {
+		t.Errorf("main_bom.csv:\n%s\nwant:\n%s", e["main_bom.csv"], bom)
+	}
+	if cpl := "Designator,Footprint,Mid X,Mid Y,TB,Rotation,Comment\n" +
+		"D1,LED_0603_1608Metric,115.0000mm,-102.5400mm,T,0,LED\n" +
+		"J1,PinHeader_1x02_P2.54mm_Vertical,105.0000mm,-100.0000mm,T,0,Power\n" +
+		"R1,R_0603_1608Metric,115.0000mm,-100.0000mm,B,90,1k\n"; e["main_centroid.csv"] != cpl {
+		t.Errorf("main_centroid.csv:\n%s\nwant:\n%s", e["main_centroid.csv"], cpl)
 	}
 }

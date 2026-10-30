@@ -125,8 +125,13 @@ func TestErrors(t *testing.T) {
 	}{
 		{"bom column", func() error { _, err := BOM(jlc, []byte("Refs,Value\nR1,1k\n")); return err }, "bom: no column Footprint"},
 		{"pos column", func() error { _, err := CPL(jlc, []byte("Ref,Val\nR1,1k\n"), nil); return err }, "pos: no column Package, PosX"},
+		{"pos Val", func() error {
+			_, err := CPL(pcbway, []byte("Ref,Package,PosX,PosY,Rot,Side\nR1,R,1,2,0,top\n"), nil)
+			return err
+		}, "pos: no column Val"},
+		{"no refs", func() error { _, err := BOM(pcbway, []byte("Refs,Value,Footprint\n\" , \",1k,R\n")); return err }, "bom: a row with no Refs"},
 		{"side", func() error {
-			_, err := CPL(jlc, []byte("Ref,Package,PosX,PosY,Rot,Side\nR1,R,1,2,0,inner\n"), nil)
+			_, err := CPL(jlc, []byte("Ref,Val,Package,PosX,PosY,Rot,Side\nR1,1k,R,1,2,0,inner\n"), nil)
 			return err
 		}, `side "inner"`},
 		{"rotation", func() error { _, err := ParseRotation("R_.*"); return err }, "want FOOTPRINT_REGEXP=DEGREES"},
@@ -214,5 +219,65 @@ func TestZipDuplicateName(t *testing.T) {
 	err := Zip(&b, jlc, "main", []File{{"a/x.gtl", nil}, {"b/x.gtl", nil}}, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "two files named x.gtl") {
 		t.Errorf("Zip = %v", err)
+	}
+}
+
+var pcbway = Layouts["pcbway"]
+
+func TestPCBWayBOM(t *testing.T) {
+	in := `"Refs","Value","Footprint","Qty","DNP","MPN","Manufacturer"
+"D1","LED","LED_SMD:LED_0603_1608Metric","1","","LTST-C191KRKT","Lite-On"
+"R1,R2","1k","Resistor_SMD:R_0603_1608Metric","2","","",""
+"R3","10k","Resistor_SMD:R_0603_1608Metric","1","DNP","",""
+`
+	got, err := BOM(pcbway, []byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Item #,Designator,Qty,Manufacturer,Mfg Part #,Description / Value,Package/Footprint,Type,Your Instructions / Notes\n" +
+		"1,D1,1,Lite-On,LTST-C191KRKT,LED,LED_0603_1608Metric,,\n" +
+		"2,\"R1,R2\",2,,,1k,R_0603_1608Metric,,\n"
+	if string(got) != want {
+		t.Errorf("BOM:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestQtyFromRefs(t *testing.T) {
+	got, err := BOM(pcbway, []byte("Refs,Value,Footprint\n\"C1,C2,C3\",100n,C_0402\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "1,\"C1,C2,C3\",3,") {
+		t.Errorf("no Qty 3 in:\n%s", got)
+	}
+}
+
+func TestPCBWayCPL(t *testing.T) {
+	got, err := CPL(pcbway, []byte(posIn), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Designator,Footprint,Mid X,Mid Y,TB,Rotation,Comment\n" +
+		"D1,LED_0603_1608Metric,115.0000mm,-102.5400mm,T,0,LED\n" +
+		"J1,PinHeader_1x02,105.0000mm,-100.0000mm,T,270,Power\n" +
+		"R1,R_0603_1608Metric,115.0000mm,-100.0000mm,B,90,1k\n"
+	if string(got) != want {
+		t.Errorf("CPL:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestCPLFootprintWithoutLibrary(t *testing.T) {
+	got, err := CPL(pcbway, []byte("Ref,Val,Package,PosX,PosY,Rot,Side\nR1,1k,Resistor_SMD:R_0603,1,2,0,top\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "R1,R_0603,") {
+		t.Errorf("library kept:\n%s", got)
+	}
+}
+
+func TestPCBWayNames(t *testing.T) {
+	if got := pcbway.BOMName("main") + " " + pcbway.CPLName("main"); got != "main_bom.csv main_centroid.csv" {
+		t.Errorf("names %q", got)
 	}
 }
