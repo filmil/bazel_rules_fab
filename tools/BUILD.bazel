@@ -20,3 +20,9 @@ buildifier(
     lint_mode = "warn",
     mode = "check",
 )
+
+# bazel run //tools:mirror: checks the mirrored archives (tools/mirror).
+alias(
+    name = "mirror",
+    actual = "//tools/mirror",
+)

@@ -47,7 +47,31 @@ common --registry=https://raw.githubusercontent.com/filmil/bazel-registry/main
 common --registry=https://bcr.bazel.build
 ```
 
-The rules are documented in [docs/defs.md](docs/defs.md).
+The rules are documented in [docs/defs.md](docs/defs.md). A board checked
+against a fab house's design rules:
+
+```starlark
+load("@rules_fab//fab:defs.bzl", "fab_rules")
+load("@rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_pcb")
+
+fab_rules(
+    name = "jlcpcb_rules",
+    stackup = "2L-1oz",  # also 4L-1oz (the default), 4L-2oz, 6L-1oz
+    vendor = "jlcpcb",   # also pcbway, generic
+)
+
+kicad_pcb(
+    name = "pcb",
+    board = "main.kicad_pcb",
+    design_rules = ":jlcpcb_rules",
+    schematic = ":sch",
+)
+
+kicad_drc_test(
+    name = "drc_test",
+    pcb = ":pcb",
+)
+```
 
 ## Building
 
@@ -82,3 +106,8 @@ See the overall description at the [project page][pp].
 This repository is under the Apache License 2.0 (`LICENSE`).
 Prebuilt tools and libraries that the build downloads are listed here, with
 their versions, sources and licenses, as they are added.
+
+* kicad-druid 1.2.0 (https://github.com/Cimos/kicad-druid), the design
+  rules of `fab_rules`: MIT. The source archive of its tag, pinned by
+  sha256 in `MODULE.bazel`, fetched from this repository's release
+  `mirror-kicad-druid-1.2.0` (`tools/mirror`) or from GitHub.

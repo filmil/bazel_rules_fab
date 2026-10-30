@@ -12,6 +12,53 @@ The rules arrive in milestone M3 (see the issues of
 https://github.com/filmil/bazel_rules_fab). This file is the only public
 entry point; everything under `//fab/private` may change without notice.
 
+<a id="fab_rules"></a>
+
+## fab_rules
+
+<pre>
+load("@rules_fab//fab:defs.bzl", "fab_rules")
+
+fab_rules(<a href="#fab_rules-name">name</a>, <a href="#fab_rules-rule_set">rule_set</a>, <a href="#fab_rules-stackup">stackup</a>, <a href="#fab_rules-vendor">vendor</a>)
+</pre>
+
+A fab house's design rules, as `<name>.kicad_dru`.
+
+```starlark
+fab_rules(
+    name = "jlcpcb_rules",
+    stackup = "2L-1oz",
+    vendor = "jlcpcb",
+)
+
+kicad_pcb(
+    name = "pcb",
+    board = "main.kicad_pcb",
+    design_rules = ":jlcpcb_rules",
+    schematic = ":sch",
+)
+```
+
+The rules come from kicad-druid 1.2.0 (MIT), pinned by its archive's
+sha256: they follow the vendor's published capabilities for drill sizes,
+annular rings, track widths and clearances. `kicad_drc_test` on the board
+then checks it against them; rules_kicad's canary makes sure KiCad read
+the file.
+
+AGENTS.md, rule 7: changing which rules a board uses, or the rule files,
+needs a person.
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="fab_rules-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="fab_rules-rule_set"></a>rule_set |  The rule files to pick from, named as kicad-druid names them (`JLCPCB.kicad_dru`, `JLCPCB-2L-1oz.kicad_dru`, ...). The default is the pinned kicad-druid 1.2.0; another release of it can stand in.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `"@kicad_druid//:rules"`  |
+| <a id="fab_rules-stackup"></a>stackup |  Layers and outer copper weight: 2L-1oz, 4L-1oz, 4L-2oz, 6L-1oz.   | String | optional |  `"4L-1oz"`  |
+| <a id="fab_rules-vendor"></a>vendor |  The fab house: generic, jlcpcb, pcbway.   | String | required |  |
+
+
 <a id="tool_toolchain"></a>
 
 ## tool_toolchain

@@ -1,0 +1,17 @@
+{
+  "repo": "filmil/bazel_rules_fab",
+  "releases": [
+    {
+      "tag": "mirror-kicad-druid-1.2.0",
+      "title": "Mirror: kicad-druid 1.2.0",
+      "notes": "The source archive of tag v1.2.0 of https://github.com/Cimos/kicad-druid, as GitHub served it on 2026-10-30, for fab_rules (issue #8). License: MIT.",
+      "assets": [
+        {
+          "name": "kicad-druid-1.2.0.tar.gz",
+          "sha256": "85b07296d10beb91a96b12870b5cab83894ac2cf6b035b84df90e0f1a9516401",
+          "url": "https://github.com/Cimos/kicad-druid/archive/refs/tags/v1.2.0.tar.gz"
+        }
+      ]
+    }
+  ]
+}

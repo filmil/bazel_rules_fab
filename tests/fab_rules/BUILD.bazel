@@ -1,0 +1,162 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_rules (issue #8): each vendor and stackup gives kicad-druid's file;
+# a rule set of one's own stands in for it, and one without the file asked
+# for fails analysis. (An unknown vendor or stackup fails when the BUILD
+# file loads: the attributes list their values.)
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@rules_go//go:def.bzl", "go_test")
+load("@rules_kicad//kicad:defs.bzl", "kicad_drc_report", "kicad_pcb", "kicad_schematic")
+load("//fab:defs.bzl", "fab_rules")
+load(":fails_test.bzl", "fails_test")
+
+[
+    fab_rules(
+        name = "%s_%s" % (
+            vendor,
+            stackup.replace("-", "_"),
+        ),
+        stackup = stackup,
+        vendor = vendor,
+    )
+    for vendor in [
+        "generic",
+        "jlcpcb",
+        "pcbway",
+    ]
+    for stackup in [
+        "2L-1oz",
+        "4L-1oz",
+        "4L-2oz",
+        "6L-1oz",
+    ]
+]
+
+# The default stackup is kicad-druid's default file, 4 layers, 1 oz.
+fab_rules(
+    name = "jlcpcb_default",
+    vendor = "jlcpcb",
+)
+
+# Each file is the vendor's, and the variant asked for: kicad-druid's
+# header names both.
+go_test(
+    name = "fab_rules_files_test",
+    size = "small",
+    srcs = ["files_test.go"],
+    args = ["--files=$(rlocationpaths :all)"],
+    data = [":all"],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+filegroup(
+    name = "all",
+    srcs = [":jlcpcb_default"] + [
+        ":%s_%s" % (vendor, stackup)
+        for vendor in [
+            "generic",
+            "jlcpcb",
+            "pcbway",
+        ]
+        for stackup in [
+            "2L_1oz",
+            "4L_1oz",
+            "4L_2oz",
+            "6L_1oz",
+        ]
+    ],
+)
+
+# kicad-druid's own test boards, with their vendor's rules: each has
+# footprints that fail on purpose, so its DRC report must hold violations
+# of the vendor's rules (they loaded, and they fire).
+[
+    kicad_schematic(
+        name = "%s_sch" % vendor,
+        project = "@kicad_druid//:%s/%s.kicad_pro" % (prefix, prefix),
+        root = "@kicad_druid//:%s/%s.kicad_sch" % (prefix, prefix),
+    )
+    for vendor, prefix in [
+        ("jlcpcb", "JLCPCB"),
+        ("pcbway", "PCBWay"),
+    ]
+]
+
+[
+    kicad_pcb(
+        name = "%s_board" % vendor,
+        board = "@kicad_druid//:%s/%s.kicad_pcb" % (prefix, prefix),
+        design_rules = ":%s_4L_1oz" % vendor,
+        schematic = ":%s_sch" % vendor,
+    )
+    for vendor, prefix in [
+        ("jlcpcb", "JLCPCB"),
+        ("pcbway", "PCBWay"),
+    ]
+]
+
+[
+    kicad_drc_report(
+        name = "%s_report" % vendor,
+        pcb = ":%s_board" % vendor,
+    )
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+]
+
+[
+    go_test(
+        name = "%s_rules_fire_test" % vendor,
+        size = "small",
+        srcs = ["fired_test.go"],
+        args = [
+            "--report=$(rlocationpath :%s_report)" % vendor,
+            "--vendor=" + prefix,
+        ],
+        data = [":%s_report" % vendor],
+        pure = "on",
+        deps = ["@rules_go//go/runfiles"],
+    )
+    for vendor, prefix in [
+        ("jlcpcb", "JLCPCB"),
+        ("pcbway", "PCBWay"),
+    ]
+]
+
+# A rule set of one's own: only JLCPCB's 2-layer file, a test fixture.
+filegroup(
+    name = "custom_set",
+    srcs = ["custom/JLCPCB-2L-1oz.kicad_dru"],
+)
+
+fab_rules(
+    name = "custom_2L",
+    rule_set = ":custom_set",
+    stackup = "2L-1oz",
+    vendor = "jlcpcb",
+)
+
+diff_test(
+    name = "custom_2L_test",
+    size = "small",
+    file1 = ":custom_2L",
+    file2 = "custom/JLCPCB-2L-1oz.kicad_dru",
+)
+
+# The same set has no 4-layer file.
+fab_rules(
+    name = "custom_4L",
+    rule_set = ":custom_set",
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "custom_4L_test",
+    size = "small",
+    message = "has no JLCPCB.kicad_dru",
+    target_under_test = ":custom_4L",
+)
