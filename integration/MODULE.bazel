@@ -20,3 +20,15 @@ local_path_override(
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
+
+# rules_fab's own override does not reach this module: overrides apply in
+# the root module only. The same pinned commit of rules_kicad (issue #7).
+bazel_dep(name = "rules_kicad", version = "0.0.0")
+
+# The same pin as MODULE.bazel and README.md; change all three together.
+archive_override(
+    module_name = "rules_kicad",
+    integrity = "sha256-0wW65aG/D8xPUFUlBxzLyxXOy4EilPYYa3A5mOfttTY=",
+    strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
+)

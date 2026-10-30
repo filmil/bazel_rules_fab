@@ -25,6 +25,21 @@ Only Linux x86_64 hosts are supported.
 bazel_dep(name = "rules_fab", version = "0.1.0")
 ```
 
+rules_fab builds on rules_kicad, which is in no registry yet. Until it is,
+pin the same commit as rules_fab does, in your `MODULE.bazel` (an override
+counts only in the root module). It is GitHub's archive of that commit,
+checked by its hash, so the build needs no `git` on the host:
+
+```starlark
+bazel_dep(name = "rules_kicad", version = "0.0.0")
+archive_override(
+    module_name = "rules_kicad",
+    integrity = "sha256-0wW65aG/D8xPUFUlBxzLyxXOy4EilPYYa3A5mOfttTY=",
+    strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
+)
+```
+
 `.bazelrc`, while the module is only in the filmil registry:
 
 ```

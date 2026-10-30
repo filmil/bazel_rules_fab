@@ -63,8 +63,58 @@ jobs:
             echo "changed=true" >> "${GITHUB_OUTPUT}"
           fi
 
-  tag:
+  # The BCR rejects a module whose dependencies are only in the filmil
+  # registry, or that overrides one (archive_override, issue #7). Pull requests
+  # do not wait for that (Test's bcr-ready job is advisory); a release does,
+  # before anything is tagged.
+  bcr_ready:
     needs: check
+    if: ${{ needs.check.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
+    strategy:
+      matrix:
+        bazel: ["8.x", "9.x"]
+    defaults:
+      run:
+        shell: bash
+    # The same bazelisk as Test (test.yml); change both together.
+    env:
+      USE_BAZEL_VERSION: ${{ matrix.bazel }}
+      BAZELISK_VERSION: v1.29.0
+      BAZELISK_SHA256: 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
+    steps:
+      - name: Install bazelisk
+        run: |
+          set -o errexit -o nounset -o pipefail
+          curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum -c -
+          chmod +x /usr/local/bin/bazel
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Dependencies resolve from the BCR alone
+        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+      - name: Integration dependencies resolve from the BCR alone
+        working-directory: integration
+        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+      # An override in the root module bypasses the registry, so the
+      # checks above pass with one; the BCR rejects a module that has one.
+      # (integration/'s local_path_override of rules_fab is replaced by the
+      # registry presubmit, so it is not checked.)
+      - name: The module overrides no dependency
+        run: |
+          set -o errexit -o nounset -o pipefail
+          if grep -nE '^[[:space:]]*(archive|git|local_path|single_version|multiple_version)_override\(' MODULE.bazel; then
+            echo "MODULE.bazel overrides a dependency; remove it before a release (issue #7)"; exit 1
+          fi
+
+  tag:
+    needs: [check, bcr_ready]
     if: ${{ needs.check.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     permissions:
