@@ -2,7 +2,7 @@
 #
 # The e2e design, copied from rules_kicad (README.md), as a user of
 # rules_fab writes one. Each check of it is in a package of its own.
-load("@rules_kicad//kicad:defs.bzl", "kicad_schematic")
+load("@rules_kicad//kicad:defs.bzl", "kicad_pcb", "kicad_schematic")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -14,4 +14,12 @@ kicad_schematic(
     project = "main.kicad_pro",
     root = "main.kicad_sch",
     deps = ["@kicad_libs//:standard"],
+)
+
+# The board, with KiCad's default design rules; fab_rules/ checks it with
+# a fab's.
+kicad_pcb(
+    name = "pcb",
+    board = "main.kicad_pcb",
+    schematic = ":sch",
 )

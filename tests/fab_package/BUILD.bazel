@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_package (issue #9) on fixture files in the shape of rules_kicad's
+# outputs (board/): the ZIP's entries and CSVs, a rotation correction, the
+# same bytes in two configurations.
+load("@rules_go//go:def.bzl", "go_test")
+load("//fab:defs.bzl", "determinism_test", "fab_package")
+
+filegroup(
+    name = "gerbers",
+    srcs = glob(["board/gerbers/*"]),
+)
+
+fab_package(
+    name = "jlcpcb",
+    board_name = "main",
+    bom = "board/bom.csv",
+    drill = "board/drill/main.drl",
+    gerbers = ":gerbers",
+    pos = "board/pos.csv",
+    vendor = "jlcpcb",
+)
+
+# The same, with JLCPCB's 0603 LED turned by 180 degrees.
+fab_package(
+    name = "jlcpcb_rotated",
+    board_name = "main",
+    bom = "board/bom.csv",
+    drill = "board/drill/main.drl",
+    gerbers = ":gerbers",
+    pos = "board/pos.csv",
+    rotations = {"LED_0603_.*": "180"},
+    vendor = "jlcpcb",
+)
+
+go_test(
+    name = "jlcpcb_zip_test",
+    size = "small",
+    srcs = ["zip_test.go"],
+    args = [
+        "--zip=$(rlocationpath :jlcpcb)",
+        "--rotated=$(rlocationpath :jlcpcb_rotated)",
+    ],
+    data = [
+        ":jlcpcb",
+        ":jlcpcb_rotated",
+    ],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+determinism_test(
+    name = "jlcpcb_determinism_test",
+    size = "small",
+    target = ":jlcpcb",
+)

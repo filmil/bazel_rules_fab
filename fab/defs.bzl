@@ -14,10 +14,12 @@ entry point; everything under `//fab/private` may change without notice.
 
 load("//fab/private:determinism.bzl", _determinism_test = "determinism_test")
 load("//fab/private:fab_rules.bzl", _fab_rules = "fab_rules")
+load("//fab/private:package.bzl", _fab_package = "fab_package")
 load("//fab/private:swap_test.bzl", _swap_test = "swap_test")
 load("//fab/private:toolchains.bzl", _tool_toolchain = "tool_toolchain")
 
 determinism_test = _determinism_test
+fab_package = _fab_package
 fab_rules = _fab_rules
 swap_test = _swap_test
 tool_toolchain = _tool_toolchain

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# The packager of fab_package (issue #9): a fab house's ZIP from
+# rules_kicad's outputs. Pure Go, built from source.
+go_library(
+    name = "packager",
+    srcs = ["packager.go"],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/packager",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "packager_test",
+    size = "small",
+    srcs = ["packager_test.go"],
+    embed = [":packager"],
+    pure = "on",
+)
+
+go_binary(
+    name = "cmd",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//fab/toolchains:__pkg__"],
+    deps = [":packager"],
+)
