@@ -1,0 +1,5 @@
+"Refs","Value","Footprint","Qty","DNP","LCSC"
+"D1","LED","LED_SMD:LED_0603_1608Metric","1","","C2286"
+"J1","Power","Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical","1","",""
+"R1","1k","Resistor_SMD:R_0603_1608Metric","1","","C21190"
+"R2","10k","Resistor_SMD:R_0603_1608Metric","1","DNP",""

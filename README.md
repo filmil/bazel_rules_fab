@@ -73,6 +73,24 @@ kicad_drc_test(
 )
 ```
 
+A JLCPCB package of the board, from rules_kicad's outputs:
+
+```starlark
+load("@rules_fab//fab:defs.bzl", "fab_package")
+
+fab_package(
+    name = "jlcpcb",
+    bom = ":bom",          # kicad_bom
+    drill = ":drill",      # kicad_drill
+    gerbers = ":gerbers",  # kicad_gerbers
+    pos = ":pos",          # kicad_pos
+    vendor = "jlcpcb",
+)
+```
+
+`bazel build :jlcpcb` writes `jlcpcb.zip`: the Gerbers and drill file, and
+JLCPCB's BOM and placement list (CPL).
+
 ## Building
 
 ```sh

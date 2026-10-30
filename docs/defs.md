@@ -12,6 +12,69 @@ The rules arrive in milestone M3 (see the issues of
 https://github.com/filmil/bazel_rules_fab). This file is the only public
 entry point; everything under `//fab/private` may change without notice.
 
+<a id="fab_package"></a>
+
+## fab_package
+
+<pre>
+load("@rules_fab//fab:defs.bzl", "fab_package")
+
+fab_package(<a href="#fab_package-name">name</a>, <a href="#fab_package-board_name">board_name</a>, <a href="#fab_package-bom">bom</a>, <a href="#fab_package-drill">drill</a>, <a href="#fab_package-gerbers">gerbers</a>, <a href="#fab_package-pos">pos</a>, <a href="#fab_package-rotations">rotations</a>, <a href="#fab_package-vendor">vendor</a>)
+</pre>
+
+A fab house's ZIP for a board: `<name>.zip`.
+
+```starlark
+fab_package(
+    name = "jlcpcb",
+    bom = ":bom",          # kicad_bom
+    drill = ":drill",      # kicad_drill
+    gerbers = ":gerbers",  # kicad_gerbers
+    pos = ":pos",          # kicad_pos
+    vendor = "jlcpcb",
+)
+```
+
+The ZIP holds, at its root:
+
+* the Gerber layers and drill files, named as KiCad names them (Protel
+  extensions such as `.gtl` and `.gbl`, which JLCPCB takes); KiCad's job
+  file, reports and drill maps (`.gbrjob`, `.rpt`, `.pdf`, `.svg`) are
+  left out;
+* `<board>_bom.csv`, with JLCPCB's columns `Comment` (the value),
+  `Designator`, `Footprint` (without its library) and `LCSC Part #` (the
+  schematic field `LCSC` if the BOM has that column, else empty); parts
+  marked DNP are left out;
+* `<board>_cpl.csv`, with `Designator`, `Mid X` and `Mid Y` (such as
+  `115.0000mm`), `Layer` (`Top`, `Bottom`) and `Rotation` (degrees, at
+  least 0 and below 360, no unit).
+
+`<board>` is `board_name`, or the last part of the target's name.
+
+Its entries are sorted by name, dated 1980-01-01 and mode 0644, so the
+same board gives the same bytes.
+
+JLCPCB's rotations are its own models', which are not always KiCad's, so a
+board can come back with parts turned. `rotations` corrects them: each key
+is a regular expression that must match a whole footprint name (the
+position file's `Package`), each value the degrees to add. The rules are
+tried in the order written, and the first match counts. It is empty by default: rules_fab ships no table yet.
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="fab_package-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="fab_package-board_name"></a>board_name |  The board's name in the CSV files' names; the target's name if empty.   | String | optional |  `""`  |
+| <a id="fab_package-bom"></a>bom |  The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, Footprint, and DNP and LCSC when present.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-drill"></a>drill |  The drill files (`kicad_drill`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-gerbers"></a>gerbers |  The Gerber layers (`kicad_gerbers`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-pos"></a>pos |  The positions (`kicad_pos`): a CSV with the columns Ref, Package, PosX, PosY, Rot and Side, in mm.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-rotations"></a>rotations |  Rotation corrections: footprint regular expression to degrees. Empty by default.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `{}`  |
+| <a id="fab_package-vendor"></a>vendor |  The fab house: jlcpcb.   | String | required |  |
+
+
 <a id="fab_rules"></a>
 
 ## fab_rules

@@ -23,15 +23,21 @@ def _helpers_toolchain_impl(ctx):
         launcher = ctx.attr.launcher[DefaultInfo].files_to_run,
         swapcheck = ctx.attr.swapcheck[DefaultInfo],
         compare = ctx.attr.compare[DefaultInfo],
-    ))]
+    ), tools = {
+        # Tools that rules run in actions through run_tool, so built for the
+        # execution platform: fab_package's packager (issue #9).
+        "packager": ctx.attr.packager[DefaultInfo].files_to_run,
+    })]
 
 helpers_toolchain = rule(
     implementation = _helpers_toolchain_impl,
-    doc = "The helpers toolchain: the launcher, the swap checker and the determinism comparer.",
+    doc = "The helpers toolchain: the launcher, the swap checker, the determinism comparer and " +
+          "fab_package's packager.",
     attrs = {
         "launcher": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "swapcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
         "compare": attr.label(mandatory = True, executable = True, cfg = "target"),
+        "packager": attr.label(mandatory = True, executable = True, cfg = "exec"),
     },
 )
 

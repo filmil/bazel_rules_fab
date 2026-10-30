@@ -7,6 +7,7 @@ bzl_library(
     srcs = [
         "determinism.bzl",
         "fab_rules.bzl",
+        "package.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
         "toolchains.bzl",
