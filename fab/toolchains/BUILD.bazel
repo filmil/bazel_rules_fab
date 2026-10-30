@@ -29,6 +29,7 @@ helpers_toolchain(
     compare = "//fab/private/detcompare",
     launcher = "//fab/private/launcher",
     packager = "//fab/private/packager:cmd",
+    pkgcheck = "//fab/private/pkgcheck:cmd",
     swapcheck = "//fab/private/swapcheck",
 )
 
