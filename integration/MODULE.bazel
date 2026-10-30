@@ -32,3 +32,7 @@ archive_override(
     strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
     urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
 )
+
+# KiCad's standard symbol and footprint libraries, for the e2e design.
+kicad = use_extension("@rules_kicad//kicad:extensions.bzl", "kicad")
+use_repo(kicad, "kicad_libs")

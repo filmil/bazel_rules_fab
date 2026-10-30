@@ -1,0 +1,5 @@
+(version 1)
+# A test fixture: a rule set with only the JLCPCB 2-layer file.
+(rule "Custom: Track width"
+	(constraint track_width (min 0.2mm))
+)

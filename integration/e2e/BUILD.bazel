@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The e2e design, copied from rules_kicad (README.md), as a user of
+# rules_fab writes one. Each check of it is in a package of its own.
+load("@rules_kicad//kicad:defs.bzl", "kicad_schematic")
+
+package(default_visibility = ["//:__subpackages__"])
+
+exports_files(["main.kicad_pcb"])
+
+kicad_schematic(
+    name = "sch",
+    srcs = ["power.kicad_sch"],
+    project = "main.kicad_pro",
+    root = "main.kicad_sch",
+    deps = ["@kicad_libs//:standard"],
+)

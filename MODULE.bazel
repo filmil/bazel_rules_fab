@@ -33,6 +33,23 @@ archive_override(
     urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
 )
 
+# kicad-druid 1.2.0: KiCad design rules for JLCPCB, PCBWay and a generic
+# fab (issue #8, MIT). Its releases have no assets, so this is the tag's
+# source archive, checked by its sha256.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "kicad_druid",
+    build_file = "//fab/private:kicad_druid.BUILD",
+    sha256 = "85b07296d10beb91a96b12870b5cab83894ac2cf6b035b84df90e0f1a9516401",
+    strip_prefix = "kicad-druid-1.2.0",
+    # This repository's mirror first (tools/mirror), then GitHub's archive.
+    urls = [
+        "https://github.com/filmil/bazel_rules_fab/releases/download/mirror-kicad-druid-1.2.0/kicad-druid-1.2.0.tar.gz",
+        "https://github.com/Cimos/kicad-druid/archive/refs/tags/v1.2.0.tar.gz",
+    ],
+)
+
 # The helpers toolchain, which every rule that runs a tool needs.
 register_toolchains(
     "//fab/toolchains:helpers",

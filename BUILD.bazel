@@ -28,3 +28,9 @@ config_setting(
     flag_values = {":tools": "source"},
     visibility = ["//visibility:public"],
 )
+
+# The mirror tool's test reads what MODULE.bazel fetches (tools/mirror).
+exports_files(
+    ["MODULE.bazel"],
+    visibility = ["//tools/mirror:__pkg__"],
+)

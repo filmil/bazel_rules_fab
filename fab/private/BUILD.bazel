@@ -6,6 +6,7 @@ bzl_library(
     name = "private",
     srcs = [
         "determinism.bzl",
+        "fab_rules.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
         "toolchains.bzl",
@@ -21,3 +22,6 @@ string_flag(
     build_setting_default = "",
     visibility = ["//visibility:public"],
 )
+
+# The BUILD file of the kicad-druid archive (MODULE.bazel).
+exports_files(["kicad_druid.BUILD"])
