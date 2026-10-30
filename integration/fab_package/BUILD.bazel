@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# The e2e board's JLCPCB package, from rules_kicad's Gerbers, drill file,
-# BOM and positions (issue #9): what a user of both modules writes. The
-# same bytes in two configurations.
+# The e2e board's JLCPCB and PCBWay packages, from rules_kicad's Gerbers,
+# drill file, BOM and positions (issues #9, #10): what a user of both
+# modules writes. The same bytes in two configurations.
 load("@rules_fab//fab:defs.bzl", "determinism_test", "fab_package")
 load("@rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_drill", "kicad_gerbers", "kicad_pos")
 
@@ -40,4 +40,20 @@ determinism_test(
     name = "jlcpcb_determinism_test",
     size = "small",
     target = ":jlcpcb",
+)
+
+fab_package(
+    name = "pcbway",
+    board_name = "main",
+    bom = ":bom",
+    drill = ":drill",
+    gerbers = ":gerbers",
+    pos = ":pos",
+    vendor = "pcbway",
+)
+
+determinism_test(
+    name = "pcbway_determinism_test",
+    size = "small",
+    target = ":pcbway",
 )

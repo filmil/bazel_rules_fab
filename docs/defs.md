@@ -35,30 +35,43 @@ fab_package(
 )
 ```
 
-The ZIP holds, at its root:
+The ZIP holds, at its root, for every vendor: the Gerber layers and drill
+files, named as KiCad names them (Protel extensions such as `.gtl` and
+`.gbl`). KiCad's job file, reports and drill maps (`.gbrjob`, `.rpt`,
+`.pdf`, `.svg`) are left out. It also holds a BOM and a placement list,
+which differ by vendor. In both, footprints are without their library,
+parts marked DNP are left out of the BOM, `X` and `Y` read like
+`115.0000mm`, and rotations are degrees, at least 0 and below 360, with
+no unit.
 
-* the Gerber layers and drill files, named as KiCad names them (Protel
-  extensions such as `.gtl` and `.gbl`, which JLCPCB takes); KiCad's job
-  file, reports and drill maps (`.gbrjob`, `.rpt`, `.pdf`, `.svg`) are
-  left out;
-* `<board>_bom.csv`, with JLCPCB's columns `Comment` (the value),
-  `Designator`, `Footprint` (without its library) and `LCSC Part #` (the
-  schematic field `LCSC` if the BOM has that column, else empty); parts
-  marked DNP are left out;
-* `<board>_cpl.csv`, with `Designator`, `Mid X` and `Mid Y` (such as
-  `115.0000mm`), `Layer` (`Top`, `Bottom`) and `Rotation` (degrees, at
-  least 0 and below 360, no unit).
+`jlcpcb`:
+
+* `<board>_bom.csv`: `Comment` (the value), `Designator`, `Footprint`,
+  `LCSC Part #` (the schematic field `LCSC`, if the BOM has that column);
+* `<board>_cpl.csv`: `Designator`, `Mid X`, `Mid Y`, `Layer` (`Top`,
+  `Bottom`), `Rotation`.
+
+`pcbway`, after PCBWay's sample files:
+
+* `<board>_bom.csv`: `Item #`, `Designator`, `Qty`, `Manufacturer` and
+  `Mfg Part #` (the schematic fields `Manufacturer` and `MPN`, if the BOM
+  has those columns), `Description / Value`, `Package/Footprint`, and
+  `Type` and `Your Instructions / Notes`, left empty;
+* `<board>_centroid.csv`: `Designator`, `Footprint`, `Mid X`, `Mid Y`,
+  `TB` (`T`, `B`), `Rotation`, `Comment` (the value). PCBWay's sample
+  also has `Ref X/Y` and `Pad X/Y`; kicad_pos does not give them.
 
 `<board>` is `board_name`, or the last part of the target's name.
 
 Its entries are sorted by name, dated 1980-01-01 and mode 0644, so the
 same board gives the same bytes.
 
-JLCPCB's rotations are its own models', which are not always KiCad's, so a
-board can come back with parts turned. `rotations` corrects them: each key
+A vendor's rotations are its own models', which are not always KiCad's,
+so a board can come back with parts turned. `rotations` corrects them: each key
 is a regular expression that must match a whole footprint name (the
 position file's `Package`), each value the degrees to add. The rules are
-tried in the order written, and the first match counts. It is empty by default: rules_fab ships no table yet.
+tried in the order written, and the first match counts. It is empty by
+default: rules_fab ships no table yet.
 
 **ATTRIBUTES**
 
@@ -70,9 +83,9 @@ tried in the order written, and the first match counts. It is empty by default: 
 | <a id="fab_package-bom"></a>bom |  The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, Footprint, and DNP and LCSC when present.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package-drill"></a>drill |  The drill files (`kicad_drill`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package-gerbers"></a>gerbers |  The Gerber layers (`kicad_gerbers`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-| <a id="fab_package-pos"></a>pos |  The positions (`kicad_pos`): a CSV with the columns Ref, Package, PosX, PosY, Rot and Side, in mm.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-pos"></a>pos |  The positions (`kicad_pos`): a CSV with the columns Ref, Val, Package, PosX, PosY, Rot and Side, in mm.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package-rotations"></a>rotations |  Rotation corrections: footprint regular expression to degrees. Empty by default.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `{}`  |
-| <a id="fab_package-vendor"></a>vendor |  The fab house: jlcpcb.   | String | required |  |
+| <a id="fab_package-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
 
 
 <a id="fab_rules"></a>

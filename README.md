@@ -89,7 +89,8 @@ fab_package(
 ```
 
 `bazel build :jlcpcb` writes `jlcpcb.zip`: the Gerbers and drill file, and
-JLCPCB's BOM and placement list (CPL).
+JLCPCB's BOM and placement list (CPL). `vendor = "pcbway"` writes PCBWay's
+BOM and centroid file instead.
 
 ## Building
 

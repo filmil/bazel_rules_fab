@@ -29,36 +29,84 @@ import (
 	"time"
 )
 
+// Part is one row of kicad_bom's CSV: a group of parts of one value and
+// footprint.
+type Part struct {
+	Refs, Value string
+	// Footprint is without its library: "R_0603_1608Metric".
+	Footprint string
+	// Qty is the number of parts: the Qty column, or the count of Refs.
+	Qty string
+	// Fields are all columns of the row, such as LCSC, MPN, Manufacturer.
+	Fields map[string]string
+}
+
+// Place is one row of kicad_pos's CSV, converted: X and Y read like
+// "115.0000mm", Rotation is in [0, 360).
+type Place struct {
+	Ref, Value, Footprint string
+	X, Y                  string
+	Bottom                bool
+	Rotation              string
+}
+
 // Layout is what one vendor wants: the columns of its BOM and placement
 // list, and how it names the files.
 type Layout struct {
 	Name string
-	// BOMHeader is the BOM's header row: comment (value), designators,
-	// footprint, vendor part number.
+	// BOMHeader and BOMRow make the BOM: its header, and a row per part
+	// group; i counts from 1.
 	BOMHeader []string
-	// CPLHeader is the placement list's header row: designator, X, Y,
-	// layer, rotation.
+	BOMRow    func(i int, p Part) []string
+	// CPLHeader and CPLRow make the placement list.
 	CPLHeader []string
+	CPLRow    func(p Place) []string
 	// BOMName and CPLName name the two CSV files from the board's name.
 	BOMName, CPLName func(board string) string
-	// PartField is the BOM column of the input that holds the vendor's
-	// part number, such as LCSC.
-	PartField string
-	// Top and Bottom are the layer names of the placement list.
-	Top, Bottom string
+}
+
+func side(p Place, top, bottom string) string {
+	if p.Bottom {
+		return bottom
+	}
+	return top
 }
 
 // Layouts are the vendors the packager knows, by name.
 var Layouts = map[string]Layout{
+	// JLCPCB's assembly upload: https://jlcpcb.com/help/article/81-How-to-generate-the-BOM-and-Centroid-file-from-KiCAD
 	"jlcpcb": {
 		Name:      "JLCPCB",
 		BOMHeader: []string{"Comment", "Designator", "Footprint", "LCSC Part #"},
+		BOMRow: func(_ int, p Part) []string {
+			return []string{p.Value, p.Refs, p.Footprint, p.Fields["LCSC"]}
+		},
 		CPLHeader: []string{"Designator", "Mid X", "Mid Y", "Layer", "Rotation"},
-		BOMName:   func(b string) string { return b + "_bom.csv" },
-		CPLName:   func(b string) string { return b + "_cpl.csv" },
-		PartField: "LCSC",
-		Top:       "Top",
-		Bottom:    "Bottom",
+		CPLRow: func(p Place) []string {
+			return []string{p.Ref, p.X, p.Y, side(p, "Top", "Bottom"), p.Rotation}
+		},
+		BOMName: func(b string) string { return b + "_bom.csv" },
+		CPLName: func(b string) string { return b + "_cpl.csv" },
+	},
+	// PCBWay's sample BOM (Sample_BOM_PCBWay.xlsx) and centroid file
+	// (a-sample-of-PCBWay-Centroid-File.txt), from
+	// https://www.pcbway.com/helpcenter/pcb_assembly_ordering/What_files_are_requested_for_assembly_production_.html
+	// The centroid columns Ref X/Y and Pad X/Y are left out: kicad_pos
+	// does not give them, and PCBWay asks for X, Y, angle and designator.
+	"pcbway": {
+		Name: "PCBWay",
+		BOMHeader: []string{"Item #", "Designator", "Qty", "Manufacturer", "Mfg Part #",
+			"Description / Value", "Package/Footprint", "Type", "Your Instructions / Notes"},
+		BOMRow: func(i int, p Part) []string {
+			return []string{strconv.Itoa(i), p.Refs, p.Qty, p.Fields["Manufacturer"], p.Fields["MPN"],
+				p.Value, p.Footprint, "", ""}
+		},
+		CPLHeader: []string{"Designator", "Footprint", "Mid X", "Mid Y", "TB", "Rotation", "Comment"},
+		CPLRow: func(p Place) []string {
+			return []string{p.Ref, p.Footprint, p.X, p.Y, side(p, "T", "B"), p.Rotation, p.Value}
+		},
+		BOMName: func(b string) string { return b + "_bom.csv" },
+		CPLName: func(b string) string { return b + "_centroid.csv" },
 	},
 }
 
@@ -162,11 +210,22 @@ func BOM(l Layout, data []byte) ([]byte, error) {
 		if strings.TrimSpace(r["DNP"]) != "" {
 			continue
 		}
-		fp := r["Footprint"]
-		if i := strings.Index(fp, ":"); i >= 0 {
-			fp = fp[i+1:]
+		n := 0
+		for _, ref := range strings.Split(r["Refs"], ",") {
+			if strings.TrimSpace(ref) != "" {
+				n++
+			}
 		}
-		out = append(out, []string{r["Value"], r["Refs"], fp, r[l.PartField]})
+		if n == 0 {
+			return nil, fmt.Errorf("bom: a row with no Refs (value %q)", r["Value"])
+		}
+		qty := r["Qty"]
+		if qty == "" {
+			qty = strconv.Itoa(n)
+		}
+		out = append(out, l.BOMRow(len(out)+1, Part{
+			Refs: r["Refs"], Value: r["Value"], Footprint: noLibrary(r["Footprint"]), Qty: qty, Fields: r,
+		}))
 	}
 	return writeCSV(l.BOMHeader, out)
 }
@@ -178,17 +237,16 @@ func CPL(l Layout, data []byte, rotations []Rotation) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := need("pos", header, "Ref", "Package", "PosX", "PosY", "Rot", "Side"); err != nil {
+	if err := need("pos", header, "Ref", "Val", "Package", "PosX", "PosY", "Rot", "Side"); err != nil {
 		return nil, err
 	}
 	var out [][]string
 	for _, r := range rows {
-		var layer string
+		var bottom bool
 		switch r["Side"] {
 		case "top":
-			layer = l.Top
 		case "bottom":
-			layer = l.Bottom
+			bottom = true
 		default:
 			return nil, fmt.Errorf("pos: %s: side %q is neither top nor bottom", r["Ref"], r["Side"])
 		}
@@ -211,9 +269,21 @@ func CPL(l Layout, data []byte, rotations []Rotation) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("pos: %s: y: %v", r["Ref"], err)
 		}
-		out = append(out, []string{r["Ref"], x, y, layer, strconv.FormatFloat(rot, 'f', -1, 64)})
+		out = append(out, l.CPLRow(Place{
+			Ref: r["Ref"], Value: r["Val"], Footprint: noLibrary(r["Package"]), X: x, Y: y,
+			Bottom: bottom, Rotation: strconv.FormatFloat(rot, 'f', -1, 64),
+		}))
 	}
 	return writeCSV(l.CPLHeader, out)
+}
+
+// noLibrary drops a footprint's library: "Resistor_SMD:R_0603" is
+// "R_0603".
+func noLibrary(fp string) string {
+	if i := strings.Index(fp, ":"); i >= 0 {
+		return fp[i+1:]
+	}
+	return fp
 }
 
 // normalize brings an angle into [0, 360), rounded to 1e-6 degrees, so
