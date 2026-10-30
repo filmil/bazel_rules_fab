@@ -3,7 +3,7 @@
 // Command nooverrides fails when a module overrides a dependency:
 //
 //	bazel run //tools/nooverrides -- "$PWD"
-//	bazel run //tools/nooverrides -- --allow_local_path=rules_fab "$PWD/integration"
+//	bazel run //tools/nooverrides -- --allow_local_path=hdlf_rules_fab "$PWD/integration"
 //
 // Each argument is a directory with a MODULE.bazel, or the file itself.
 // --allow_local_path=NAME allows, and requires, one local_path_override of

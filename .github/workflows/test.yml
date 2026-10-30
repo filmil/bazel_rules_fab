@@ -119,13 +119,13 @@ jobs:
           if bazel build --host_platform=//tests/platform:macos_arm64 //fab/private/swapdemo:demo > "${HOME}/p1.log" 2>&1; then
             echo "the build succeeded on an unsupported host"; exit 1
           fi
-          grep -F "rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
+          grep -F "hdlf_rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
 
   # Advisory: whether every dependency already resolves from the BCR alone.
   # The BCR rejects a module whose dependencies are only in the filmil
   # registry, so Tag and Release requires this; a pull request does not.
   # A dependency new in the filmil registry can wait days for BCR review,
-  # and rules_kicad is not in any registry yet (issue #7); the rules' work
+  # and hdlf_rules_kicad is not in any registry yet (issue #7); the rules' work
   # goes on meanwhile.
   #
   # Only the two checks may fail; a broken setup (bazelisk, checkout) still
@@ -170,7 +170,7 @@ jobs:
         run: |
           set -o errexit -o nounset -o pipefail
           bazel run //tools/nooverrides -- "${PWD}"
-          bazel run //tools/nooverrides -- --allow_local_path=rules_fab "${PWD}/integration"
+          bazel run //tools/nooverrides -- --allow_local_path=hdlf_rules_fab "${PWD}/integration"
 
       # The job stays green, so a failure shows as a warning annotation on
       # the run's summary page, not only in the step log.

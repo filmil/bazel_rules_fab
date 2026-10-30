@@ -4,7 +4,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 # The release check that a module overrides no dependency (issue #7):
 #
 #   bazel run //tools/nooverrides -- "$PWD"
-#   bazel run //tools/nooverrides -- --allow_local_path=rules_fab "$PWD/integration"
+#   bazel run //tools/nooverrides -- --allow_local_path=hdlf_rules_fab "$PWD/integration"
 #
 # Tag and Release requires both; Test's bcr-ready job reports them.
 

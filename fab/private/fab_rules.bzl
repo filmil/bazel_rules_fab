@@ -44,7 +44,7 @@ kicad_pcb(
 The rules come from kicad-druid 1.2.0 (MIT), pinned by its archive's
 sha256: they follow the vendor's published capabilities for drill sizes,
 annular rings, track widths and clearances. `kicad_drc_test` on the board
-then checks it against them; rules_kicad's canary makes sure KiCad read
+then checks it against them; hdlf_rules_kicad's canary makes sure KiCad read
 the file.
 
 AGENTS.md, rule 7: changing which rules a board uses, or the rule files,

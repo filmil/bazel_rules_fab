@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # The Bazel Central Registry presubmit builds this module against the
-# published rules_fab archive. `.bcr/presubmit.yml` names it by the
+# published hdlf_rules_fab archive. `.bcr/presubmit.yml` names it by the
 # `module_path: "integration"` key.
 #
 # The version below and the override are both replaced by the registry
@@ -9,30 +9,30 @@
 # Locally the override makes the module resolve to the parent directory, so
 # `cd integration && bazel test //...` exercises the working tree.
 module(
-    name = "rules_fab_integration",
+    name = "hdlf_rules_fab_integration",
     version = "0.0.0",
 )
 
-bazel_dep(name = "rules_fab", version = "0.0.0")
+bazel_dep(name = "hdlf_rules_fab", version = "0.0.0")
 local_path_override(
-    module_name = "rules_fab",
+    module_name = "hdlf_rules_fab",
     path = "..",
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 
-# rules_fab's own override does not reach this module: overrides apply in
-# the root module only. The same pinned commit of rules_kicad (issue #7).
-bazel_dep(name = "rules_kicad", version = "0.0.0")
+# hdlf_rules_fab's own override does not reach this module: overrides apply in
+# the root module only. The same pinned commit of hdlf_rules_kicad (issue #7).
+bazel_dep(name = "hdlf_rules_kicad", version = "0.0.0")
 
 # The same pin as MODULE.bazel and README.md; change all three together.
 archive_override(
-    module_name = "rules_kicad",
-    integrity = "sha256-0wW65aG/D8xPUFUlBxzLyxXOy4EilPYYa3A5mOfttTY=",
-    strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
-    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
+    module_name = "hdlf_rules_kicad",
+    integrity = "sha256-bz9RwwNoS0kCPESYe+qbysvlvuv9rVQpqbeqZ+Qj91U=",
+    strip_prefix = "bazel_rules_kicad-ecd6ae9329a7830c8f7144db88b5d2bbb24041e9",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/ecd6ae9329a7830c8f7144db88b5d2bbb24041e9.tar.gz"],
 )
 
 # KiCad's standard symbol and footprint libraries, for the e2e design.
-kicad = use_extension("@rules_kicad//kicad:extensions.bzl", "kicad")
+kicad = use_extension("@hdlf_rules_kicad//kicad:extensions.bzl", "kicad")
 use_repo(kicad, "kicad_libs")

@@ -4,7 +4,7 @@
 [![Publish to my Bazel registry](https://github.com/filmil/bazel_rules_fab/actions/workflows/publish.yml/badge.svg)](https://github.com/filmil/bazel_rules_fab/actions/workflows/publish.yml)
 [![Publish on Bazel Central Registry](https://github.com/filmil/bazel_rules_fab/actions/workflows/publish-bcr.yml/badge.svg)](https://github.com/filmil/bazel_rules_fab/actions/workflows/publish-bcr.yml)
 
-# rules_fab
+# hdlf_rules_fab
 
 Hermetic Bazel rules for PCB fab packages.
 The build turns the Gerbers, drill files, BOM and position files of a
@@ -22,24 +22,24 @@ Only Linux x86_64 hosts are supported.
 ## Using it
 
 ```starlark
-bazel_dep(name = "rules_fab", version = "0.1.0")
+bazel_dep(name = "hdlf_rules_fab", version = "0.1.0")
 ```
 
-That is for a release. rules_fab builds on rules_kicad, which is in no
-registry yet, and no release of rules_fab is made until it is (issue #7).
-To use rules_fab meanwhile, pin a commit of it with an
-`archive_override(module_name = "rules_fab", ...)` of GitHub's archive of
-that commit, and pin rules_kicad as rules_fab does, in your `MODULE.bazel`
+That is for a release. hdlf_rules_fab builds on hdlf_rules_kicad, which is in no
+registry yet, and no release of hdlf_rules_fab is made until it is (issue #7).
+To use hdlf_rules_fab meanwhile, pin a commit of it with an
+`archive_override(module_name = "hdlf_rules_fab", ...)` of GitHub's archive of
+that commit, and pin hdlf_rules_kicad as hdlf_rules_fab does, in your `MODULE.bazel`
 (an override counts only in the root module). Each is an archive checked
 by its hash, so the build needs no `git` on the host:
 
 ```starlark
-bazel_dep(name = "rules_kicad", version = "0.0.0")
+bazel_dep(name = "hdlf_rules_kicad", version = "0.0.0")
 archive_override(
-    module_name = "rules_kicad",
-    integrity = "sha256-0wW65aG/D8xPUFUlBxzLyxXOy4EilPYYa3A5mOfttTY=",
-    strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
-    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
+    module_name = "hdlf_rules_kicad",
+    integrity = "sha256-bz9RwwNoS0kCPESYe+qbysvlvuv9rVQpqbeqZ+Qj91U=",
+    strip_prefix = "bazel_rules_kicad-ecd6ae9329a7830c8f7144db88b5d2bbb24041e9",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/ecd6ae9329a7830c8f7144db88b5d2bbb24041e9.tar.gz"],
 )
 ```
 
@@ -54,8 +54,8 @@ The rules are documented in [docs/defs.md](docs/defs.md). A board checked
 against a fab house's design rules:
 
 ```starlark
-load("@rules_fab//fab:defs.bzl", "fab_rules")
-load("@rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_pcb")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_rules")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_pcb")
 
 fab_rules(
     name = "jlcpcb_rules",
@@ -76,10 +76,10 @@ kicad_drc_test(
 )
 ```
 
-A JLCPCB package of the board, from rules_kicad's outputs:
+A JLCPCB package of the board, from hdlf_rules_kicad's outputs:
 
 ```starlark
-load("@rules_fab//fab:defs.bzl", "fab_package")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_package")
 
 fab_package(
     name = "jlcpcb",
@@ -101,7 +101,7 @@ PCBWay before you order.
 layers, file names and columns.
 
 ```starlark
-load("@rules_fab//fab:defs.bzl", "fab_package_test")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_package_test")
 
 fab_package_test(
     name = "jlcpcb_test",

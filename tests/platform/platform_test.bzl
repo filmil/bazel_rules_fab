@@ -13,7 +13,7 @@ load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
 
 def _fails_with_message_impl(ctx):
     env = analysistest.begin(ctx)
-    asserts.expect_failure(env, "rules_fab v1 supports only Linux x86_64 hosts")
+    asserts.expect_failure(env, "hdlf_rules_fab v1 supports only Linux x86_64 hosts")
     return analysistest.end(env)
 
 fallback_fails_test = analysistest.make(

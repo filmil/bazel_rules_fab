@@ -2,7 +2,7 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # The mirror of the archives MODULE.bazel fetches (issue #8, spec
-# "Prebuilts"), ported from rules_kicad.
+# "Prebuilts"), ported from hdlf_rules_kicad.
 #
 #   bazel run //tools:mirror    checks every upstream file of manifest.json
 #

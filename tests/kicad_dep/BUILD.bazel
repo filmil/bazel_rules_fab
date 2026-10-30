@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# rules_kicad, pinned by archive_override until it is in a registry (issue #7):
+# hdlf_rules_kicad, pinned by archive_override until it is in a registry (issue #7):
 # it resolves, and its public API loads and builds.
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 build_test(
     name = "rules_kicad_builds",
     size = "small",
-    targets = ["@rules_kicad//kicad:defs"],
+    targets = ["@hdlf_rules_kicad//kicad:defs"],
 )

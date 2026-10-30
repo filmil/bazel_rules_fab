@@ -55,7 +55,7 @@ raw_swap_test = rule(
 def swap_test(name, targets, **kwargs):
     """Builds targets with every tool swapped for a stub, and checks them.
 
-    The targets are built with `--@rules_fab//fab/toolchains:use_stub`,
+    The targets are built with `--@hdlf_rules_fab//fab/toolchains:use_stub`,
     so each tool toolchain that honors the flag resolves to the stub tool.
     The stub writes a record into every output, files and directories
     alike. The test fails if any output file of the targets lacks the

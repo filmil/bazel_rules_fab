@@ -2,7 +2,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("//fab/private:toolchains.bzl", "helpers_toolchain", "unsupported_platform_toolchain")
 
-# --@rules_fab//fab/toolchains:use_stub swaps every tool for the stub.
+# --@hdlf_rules_fab//fab/toolchains:use_stub swaps every tool for the stub.
 # swap_test sets it with a transition. A tool toolchain honors it by
 # carrying target_settings = [":stub_off"], and its stub twin
 # target_settings = [":stub_on"].

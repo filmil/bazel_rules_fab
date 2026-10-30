@@ -1,11 +1,11 @@
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-Public API of rules_fab.
+Public API of hdlf_rules_fab.
 
 Load every rule from this file:
 
 ```starlark
-load("@rules_fab//fab:defs.bzl", "determinism_test", "swap_test", "tool_toolchain")
+load("@hdlf_rules_fab//fab:defs.bzl", "determinism_test", "swap_test", "tool_toolchain")
 ```
 
 The rules arrive in milestone M3 (see the issues of
@@ -17,7 +17,7 @@ entry point; everything under `//fab/private` may change without notice.
 ## fab_package
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "fab_package")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_package")
 
 fab_package(<a href="#fab_package-name">name</a>, <a href="#fab_package-board_name">board_name</a>, <a href="#fab_package-bom">bom</a>, <a href="#fab_package-drill">drill</a>, <a href="#fab_package-gerbers">gerbers</a>, <a href="#fab_package-pos">pos</a>, <a href="#fab_package-rotations">rotations</a>, <a href="#fab_package-vendor">vendor</a>)
 </pre>
@@ -71,7 +71,7 @@ so a board can come back with parts turned. `rotations` corrects them: each key
 is a regular expression that must match a whole footprint name (the
 position file's `Package`), each value the degrees to add. The rules are
 tried in the order written, and the first match counts. It is empty by
-default: rules_fab ships no table yet.
+default: hdlf_rules_fab ships no table yet.
 
 **ATTRIBUTES**
 
@@ -93,7 +93,7 @@ default: rules_fab ships no table yet.
 ## fab_package_test
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "fab_package_test")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_package_test")
 
 fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
 </pre>
@@ -141,7 +141,7 @@ through-hole parts.
 ## fab_rules
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "fab_rules")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_rules")
 
 fab_rules(<a href="#fab_rules-name">name</a>, <a href="#fab_rules-rule_set">rule_set</a>, <a href="#fab_rules-stackup">stackup</a>, <a href="#fab_rules-vendor">vendor</a>)
 </pre>
@@ -166,7 +166,7 @@ kicad_pcb(
 The rules come from kicad-druid 1.2.0 (MIT), pinned by its archive's
 sha256: they follow the vendor's published capabilities for drill sizes,
 annular rings, track widths and clearances. `kicad_drc_test` on the board
-then checks it against them; rules_kicad's canary makes sure KiCad read
+then checks it against them; hdlf_rules_kicad's canary makes sure KiCad read
 the file.
 
 AGENTS.md, rule 7: changing which rules a board uses, or the rule files,
@@ -188,7 +188,7 @@ needs a person.
 ## tool_toolchain
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "tool_toolchain")
+load("@hdlf_rules_fab//fab:defs.bzl", "tool_toolchain")
 
 tool_toolchain(<a href="#tool_toolchain-name">name</a>, <a href="#tool_toolchain-tools">tools</a>)
 </pre>
@@ -207,7 +207,7 @@ tool_toolchain(
 toolchain(
     name = "my_packager",
     toolchain = ":my_packager_impl",
-    toolchain_type = "@rules_fab//fab:toolchain_type",
+    toolchain_type = "@hdlf_rules_fab//fab:toolchain_type",
 )
 ```
 
@@ -225,7 +225,7 @@ toolchain(
 ## determinism_test
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "determinism_test")
+load("@hdlf_rules_fab//fab:defs.bzl", "determinism_test")
 
 determinism_test(<a href="#determinism_test-name">name</a>, <a href="#determinism_test-target">target</a>, <a href="#determinism_test-kwargs">**kwargs</a>)
 </pre>
@@ -267,14 +267,14 @@ determinism_test(
 ## swap_test
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "swap_test")
+load("@hdlf_rules_fab//fab:defs.bzl", "swap_test")
 
 swap_test(<a href="#swap_test-name">name</a>, <a href="#swap_test-targets">targets</a>, <a href="#swap_test-kwargs">**kwargs</a>)
 </pre>
 
 Builds targets with every tool swapped for a stub, and checks them.
 
-The targets are built with `--@rules_fab//fab/toolchains:use_stub`,
+The targets are built with `--@hdlf_rules_fab//fab/toolchains:use_stub`,
 so each tool toolchain that honors the flag resolves to the stub tool.
 The stub writes a record into every output, files and directories
 alike. The test fails if any output file of the targets lacks the

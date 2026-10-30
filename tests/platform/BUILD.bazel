@@ -11,7 +11,7 @@ fallback_fails_test(
     target_under_test = "//fab/toolchains:unsupported_impl",
 )
 
-# A host that rules_fab v1 does not support, for the CI step that builds
+# A host that hdlf_rules_fab v1 does not support, for the CI step that builds
 # with --host_platform set to it and expects the message above.
 platform(
     name = "macos_arm64",

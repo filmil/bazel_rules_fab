@@ -2,7 +2,7 @@
 
 // Package mirror checks the archives that MODULE.bazel fetches, and
 // uploads them as release assets of this repository (spec "Prebuilts").
-// It is rules_kicad's tools/mirror, ported (issue #8).
+// It is hdlf_rules_kicad's tools/mirror, ported (issue #8).
 //
 // The manifest (manifest.json) lists each release and its assets. An asset
 // is either:
@@ -10,7 +10,7 @@
 //   - mirrored: the same bytes as an upstream URL, such as a GitLab
 //     archive; or
 //   - built: made from an upstream source by a script outside this tool
-//     (in rules_kicad, the KiCad prebuilt; rules_fab has none yet).
+//     (in hdlf_rules_kicad, the KiCad prebuilt; hdlf_rules_fab has none yet).
 //
 // A dry run downloads every upstream file (each mirrored asset, and the
 // source of each built asset) and checks its sha256. An upload does the
