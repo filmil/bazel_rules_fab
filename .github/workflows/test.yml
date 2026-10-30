@@ -37,6 +37,7 @@ defaults:
   run:
     shell: bash
 
+# Tag and Release pins the same bazelisk; change both together.
 env:
   BAZELISK_VERSION: v1.29.0
   BAZELISK_SHA256: 5a408715e932c0250d28bd84555f12edbf70117de42f9181691c736eacc4a992
@@ -120,10 +121,53 @@ jobs:
           fi
           grep -F "rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
 
-      # Fails when a dependency is only in the filmil registry: the BCR
-      # would then reject the module.
+  # Advisory: whether every dependency already resolves from the BCR alone.
+  # The BCR rejects a module whose dependencies are only in the filmil
+  # registry, so Tag and Release requires this; a pull request does not.
+  # A dependency new in the filmil registry can wait days for BCR review,
+  # and rules_kicad is not in any registry yet (issue #7); the rules' work
+  # goes on meanwhile.
+  #
+  # Only the two checks may fail; a broken setup (bazelisk, checkout) still
+  # fails the job.
+  bcr-ready:
+    runs-on: ubuntu-latest
+    container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
+    strategy:
+      fail-fast: false
+      matrix:
+        bazel: ["8.x", "9.x"]
+    env:
+      USE_BAZEL_VERSION: ${{ matrix.bazel }}
+    steps:
+      - name: Install bazelisk
+        run: |
+          set -o errexit -o nounset -o pipefail
+          curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          echo "${BAZELISK_SHA256}  /usr/local/bin/bazel" | sha256sum -c -
+          chmod +x /usr/local/bin/bazel
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Dependencies resolve from the BCR alone
+        id: root
+        continue-on-error: true
         run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+      - name: Integration dependencies resolve from the BCR alone
+        id: integration
+        continue-on-error: true
+        working-directory: integration
+        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+
+      # The job stays green, so a failure shows as a warning annotation on
+      # the run's summary page, not only in the step log.
+      - name: Report what is not BCR-ready
+        if: steps.root.outcome == 'failure' || steps.integration.outcome == 'failure'
+        run: |
+          echo "::warning title=Not BCR-ready::root: ${{ steps.root.outcome }}, integration: ${{ steps.integration.outcome }}. A release (Tag and Release) needs both."
 
   integration:
     runs-on: ubuntu-latest
@@ -174,13 +218,6 @@ jobs:
           key: integration-${{ matrix.bazel }}-${{ steps.cachekey.outputs.day }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             integration-${{ matrix.bazel }}-${{ steps.cachekey.outputs.day }}-
-
-      # The registry presubmit resolves this module from the BCR alone.
-      - name: Integration dependencies resolve from the BCR alone
-        working-directory: integration
-        env:
-          USE_BAZEL_VERSION: ${{ matrix.bazel }}
-        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
 
       - name: Test the integration module with Bazel ${{ matrix.bazel }}
         working-directory: integration

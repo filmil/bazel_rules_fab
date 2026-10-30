@@ -14,6 +14,25 @@ bazel_dep(name = "platforms", version = "1.1.0")
 # its own Go SDK.
 bazel_dep(name = "rules_go", version = "0.64.2")
 
+# The fab rules read rules_kicad's outputs (Gerbers, drill, position and
+# BOM files), and KiCad runs only through rules_kicad's toolchain.
+# rules_kicad is in no registry yet, so this pins a commit of it (issue #7),
+# as GitHub's archive of that commit, checked by its hash: git_override
+# would need git on the host, and the CI image has none.
+# Remove the override once rules_kicad 0.1.0 is in the BCR; until then a
+# release waits: Tag and Release's bcr_ready job requires that every
+# dependency resolves from the BCR alone.
+bazel_dep(name = "rules_kicad", version = "0.0.0")
+
+# The same pin is in integration/MODULE.bazel and README.md; change all
+# three together.
+archive_override(
+    module_name = "rules_kicad",
+    integrity = "sha256-0wW65aG/D8xPUFUlBxzLyxXOy4EilPYYa3A5mOfttTY=",
+    strip_prefix = "bazel_rules_kicad-4b31ab05e198af1596832652a920b5c619af4936",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/4b31ab05e198af1596832652a920b5c619af4936.tar.gz"],
+)
+
 # The helpers toolchain, which every rule that runs a tool needs.
 register_toolchains(
     "//fab/toolchains:helpers",

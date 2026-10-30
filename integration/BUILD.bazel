@@ -8,6 +8,14 @@ load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@rules_fab//fab:defs.bzl", "RULES_FAB_API_VERSION")
 
+# rules_kicad resolves through its archive_override, and its public API
+# loads and builds in a module that depends on rules_fab (issue #7).
+build_test(
+    name = "rules_kicad_builds",
+    size = "small",
+    targets = ["@rules_kicad//kicad:defs"],
+)
+
 # The public packages load and build: the rules, and the root package
 # with the --@rules_fab//:tools flag that every user's build reads.
 build_test(
