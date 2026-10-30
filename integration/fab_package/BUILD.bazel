@@ -3,7 +3,7 @@
 # The e2e board's JLCPCB and PCBWay packages, from rules_kicad's Gerbers,
 # drill file, BOM and positions (issues #9, #10): what a user of both
 # modules writes. The same bytes in two configurations.
-load("@rules_fab//fab:defs.bzl", "determinism_test", "fab_package")
+load("@rules_fab//fab:defs.bzl", "determinism_test", "fab_package", "fab_package_test")
 load("@rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_drill", "kicad_gerbers", "kicad_pos")
 
 kicad_gerbers(
@@ -57,3 +57,18 @@ determinism_test(
     size = "small",
     target = ":pcbway",
 )
+
+# M3's exit: the e2e board gives two vendor ZIPs that pass (issue #11).
+# One line per ZIP: name, package, vendor. Another board is one more line.
+[
+    fab_package_test(
+        name = name,
+        size = "small",
+        package = package,
+        vendor = vendor,
+    )
+    for name, package, vendor in [
+        ("jlcpcb_test", ":jlcpcb", "jlcpcb"),
+        ("pcbway_test", ":pcbway", "pcbway"),
+    ]
+]

@@ -88,6 +88,54 @@ default: rules_fab ships no table yet.
 | <a id="fab_package-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
 
 
+<a id="fab_package_test"></a>
+
+## fab_package_test
+
+<pre>
+load("@rules_fab//fab:defs.bzl", "fab_package_test")
+
+fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
+</pre>
+
+Checks a fab house's ZIP against what the vendor takes.
+
+```starlark
+fab_package_test(
+    name = "jlcpcb_test",
+    size = "small",
+    package = ":jlcpcb",   # fab_package
+    vendor = "jlcpcb",
+)
+```
+
+The checker has its own table of each vendor's files and columns, written
+from the vendor's documents, so a bug in fab_package fails it. It checks:
+
+* the layers: top and bottom copper, solder mask and silkscreen, the board
+  outline and a drill file; paste and inner copper layers are allowed;
+  nothing else, and nothing empty or below the ZIP's root;
+* one BOM and one placement list, named for the same board, with the
+  vendor's columns in the vendor's order, and at least one row each;
+* every row has a designator; in the placement list, X and Y are in mm,
+  the rotation is at least 0 and below 360, and the layer is one the
+  vendor names.
+
+It does not compare the BOM with the placement list: DNP parts are in the
+one and not the other, and `kicad_pos(smd_only = True)` leaves out
+through-hole parts.
+
+**ATTRIBUTES**
+
+
+| Name  | Description | Type | Mandatory | Default |
+| :------------- | :------------- | :------------- | :------------- | :------------- |
+| <a id="fab_package_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="fab_package_test-package"></a>package |  The ZIP (`fab_package`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package_test-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
+| <a id="fab_package_test-want_error"></a>want_error |  For a known-bad ZIP: text that one of the problems must contain. The test then passes only if the check finds it. Empty by default: the ZIP must be good.   | String | optional |  `""`  |
+
+
 <a id="fab_rules"></a>
 
 ## fab_rules

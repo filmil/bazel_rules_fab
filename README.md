@@ -90,7 +90,23 @@ fab_package(
 
 `bazel build :jlcpcb` writes `jlcpcb.zip`: the Gerbers and drill file, and
 JLCPCB's BOM and placement list (CPL). `vendor = "pcbway"` writes PCBWay's
-BOM and centroid file instead.
+BOM and centroid file instead. PCBWay's sample BOM is a spreadsheet; this
+writes it as CSV, which PCBWay has not confirmed it takes, so check with
+PCBWay before you order.
+
+`fab_package_test` checks such a ZIP against what the vendor takes: its
+layers, file names and columns.
+
+```starlark
+load("@rules_fab//fab:defs.bzl", "fab_package_test")
+
+fab_package_test(
+    name = "jlcpcb_test",
+    size = "small",
+    package = ":jlcpcb",
+    vendor = "jlcpcb",
+)
+```
 
 ## Building
 

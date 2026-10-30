@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_package_test (issue #11): the fixture board's ZIPs pass for their
+# vendor, and known-bad ZIPs fail (T3): one missing a layer, and one
+# checked against the other vendor's columns and file names.
+load("//fab:defs.bzl", "fab_package", "fab_package_test")
+
+# One line per good ZIP: name, package, vendor.
+[
+    fab_package_test(
+        name = name,
+        size = "small",
+        package = package,
+        vendor = vendor,
+    )
+    for name, package, vendor in [
+        ("jlcpcb_test", "//tests/fab_package:jlcpcb", "jlcpcb"),
+        ("pcbway_test", "//tests/fab_package:pcbway", "pcbway"),
+    ]
+]
+
+fab_package(
+    name = "no_b_cu",
+    board_name = "main",
+    bom = "//tests/fab_package:board/bom.csv",
+    drill = "//tests/fab_package:board/drill/main.drl",
+    gerbers = "//tests/fab_package:gerbers_no_b_cu",
+    pos = "//tests/fab_package:board/pos.csv",
+    vendor = "jlcpcb",
+)
+
+fab_package_test(
+    name = "missing_layer_test",
+    size = "small",
+    package = ":no_b_cu",
+    vendor = "jlcpcb",
+    want_error = "no bottom copper (B_Cu) (*.gbl)",
+)
+
+# A JLCPCB ZIP is not a PCBWay one: the BOM's columns differ.
+fab_package_test(
+    name = "wrong_columns_test",
+    size = "small",
+    package = "//tests/fab_package:jlcpcb",
+    vendor = "pcbway",
+    want_error = "main_bom.csv: columns",
+)
+
+# ...and the placement list's name.
+fab_package_test(
+    name = "wrong_names_test",
+    size = "small",
+    package = "//tests/fab_package:jlcpcb",
+    vendor = "pcbway",
+    want_error = "no placement list (*_centroid.csv)",
+)

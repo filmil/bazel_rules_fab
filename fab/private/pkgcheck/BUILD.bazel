@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# The checker of fab_package_test (issue #11): a vendor ZIP's layers, file
+# names and columns. Pure Go, built from source.
+go_library(
+    name = "pkgcheck",
+    srcs = ["pkgcheck.go"],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/pkgcheck",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "pkgcheck_test",
+    size = "small",
+    srcs = ["pkgcheck_test.go"],
+    embed = [":pkgcheck"],
+    pure = "on",
+)
+
+go_binary(
+    name = "cmd",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//fab/toolchains:__pkg__"],
+    deps = [":pkgcheck"],
+)

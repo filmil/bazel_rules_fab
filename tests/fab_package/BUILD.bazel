@@ -6,9 +6,23 @@
 load("@rules_go//go:def.bzl", "go_test")
 load("//fab:defs.bzl", "determinism_test", "fab_package")
 
+package(default_visibility = ["//tests/fab_package_test:__pkg__"])
+
+exports_files(glob(["board/**"]))
+
 filegroup(
     name = "gerbers",
     srcs = glob(["board/gerbers/*"]),
+)
+
+# The fixture board without its bottom copper: fab_package_test's
+# known-bad ZIP.
+filegroup(
+    name = "gerbers_no_b_cu",
+    srcs = glob(
+        ["board/gerbers/*"],
+        exclude = ["board/gerbers/main-B_Cu.gbl"],
+    ),
 )
 
 fab_package(

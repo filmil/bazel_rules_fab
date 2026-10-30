@@ -8,6 +8,7 @@ bzl_library(
         "determinism.bzl",
         "fab_rules.bzl",
         "package.bzl",
+        "package_test.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
         "toolchains.bzl",
