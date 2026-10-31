@@ -63,7 +63,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	pcb, pro, net := filepath.Join(d, "s.kicad_pcb"), filepath.Join(d, "s.kicad_pro"), filepath.Join(d, "s.net")
-	if err := runWith(t, "--rules", dru, "--stackup", "2L", "--pcb", pcb, "--pro", pro, "--net", net); err != nil {
+	if err := runWith(t, "--rules", dru, "--stackup", "2L-1oz", "--pcb", pcb, "--pro", pro, "--net", net); err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range []string{pcb, pro, net} {

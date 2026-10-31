@@ -19,6 +19,7 @@ def _fab_package_test_impl(ctx):
         ),
         RunEnvironmentInfo(environment = {
             "PKG_BARE": "1" if ctx.attr.bare else "",
+            "PKG_COPPER_LAYERS": str(ctx.attr.copper_layers) if ctx.attr.copper_layers else "",
             "PKG_VENDOR": ctx.attr.vendor,
             "PKG_WANT_ERROR": ctx.attr.want_error,
             "PKG_ZIP": ctx.file.package.short_path,
@@ -50,7 +51,10 @@ from the vendor's documents, so a bug in fab_package fails it. It checks:
   with `bare = True` (a `fab_package` without `bom` and `pos`), neither;
 * every row has a designator; in the placement list, X and Y are in mm,
   the rotation is at least 0 and below 360, and the layer is one the
-  vendor names.
+  vendor names;
+* with `copper_layers`, one Gerber of each inner copper layer the board
+  has, from `In1.Cu` to `In<copper_layers - 2>.Cu`, and none it does not:
+  a board of 2 layers has none.
 
 It does not compare the BOM with the placement list: DNP parts are in the
 one and not the other, and `kicad_pos(smd_only = True)` leaves out
@@ -71,6 +75,12 @@ through-hole parts.
             doc = "The ZIP is a bare board's: it must have no BOM and no placement list. " +
                   "False by default: it must have one of each, so a package that lost them " +
                   "fails.",
+        ),
+        "copper_layers": attr.int(
+            doc = "The board's number of copper layers, such as 6: the ZIP must then hold " +
+                  "exactly its inner layers' Gerbers, `In1.Cu` to `In<copper_layers - 2>.Cu` " +
+                  "(none for 2). 0, the default, does not check them.",
+            values = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32],
         ),
         "want_error": attr.string(
             doc = "For a known-bad ZIP: text that one of the problems must contain. The " +

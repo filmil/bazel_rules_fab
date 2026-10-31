@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package swatch draws a fab house's capability swatch (issue #24): a
-// bare two-layer board the size of a credit card (ISO/IEC 7810 ID-1,
-// 85.60 x 53.98 mm, corners of 3.18 mm), with ladders of the vendor's
-// smallest features, each labelled with its size on the silkscreen.
+// bare board the size of a credit card (ISO/IEC 7810 ID-1, 85.60 x
+// 53.98 mm, corners of 3.18 mm), with ladders of the vendor's smallest
+// features, each labelled with its size on the silkscreen. A 4L or 6L
+// stackup gives the board its inner copper layers, and ladders of the
+// inner track width and spacing on In1.Cu (issue #35). Vias are through
+// vias only: no vendor's rules here list blind, buried or plugged ones,
+// and JLCPCB's and the generic rules forbid them.
 //
 // The numbers come from the vendor's KiCad design rules (ParseCaps), so
 // the board passes DRC with those rules. Below makes a known-bad variant:
@@ -38,8 +42,11 @@ var Features = map[string]string{
 	"track_spacing": "clearance",
 	"via_hole":      "drill_out_of_range",
 	"via_annular":   "annular_width",
-	"edge":          "copper_edge_clearance",
-	"text_height":   "text_height",
+	// Inner tracks: need a stackup of 4 layers or more.
+	"inner_track_width":   "track_width",
+	"inner_track_spacing": "clearance",
+	"edge":                "copper_edge_clearance",
+	"text_height":         "text_height",
 }
 
 // Options says what to draw.
@@ -115,7 +122,9 @@ func (bd *board) text(s string, x, y, size, thick float64, layer, justify string
 		s, xy(x, y), layer, bd.uuid(), num(size), num(size), num(thick), j)
 }
 
-func (bd *board) label(s string, x, y float64) { bd.text(s, x, y, labelSize, labelThick, "F.SilkS", "") }
+func (bd *board) label(s string, x, y float64) {
+	bd.text(s, x, y, labelSize, labelThick, "F.SilkS", "")
+}
 
 func (bd *board) heading(s string, x, y float64) {
 	bd.text(s, x, y, labelSize, labelThick, "F.SilkS", "left")
@@ -129,6 +138,21 @@ func (bd *board) line(x1, y1, x2, y2, width float64, layer string) {
 func (bd *board) arc(x1, y1, xm, ym, x2, y2 float64) {
 	bd.f("\t(gr_arc\n\t\t(start %s)\n\t\t(mid %s)\n\t\t(end %s)\n\t\t(stroke\n\t\t\t(width 0.05)\n\t\t\t(type solid)\n\t\t)\n\t\t(layer \"Edge.Cuts\")\n\t\t(uuid %q)\n\t)\n",
 		xy(x1, y1), xy(xm, ym), xy(x2, y2), bd.uuid())
+}
+
+// copperLayers is the number of copper layers of a stackup such as
+// "4L-1oz"; 2 for "".
+func copperLayers(stackup string) (int, error) {
+	if stackup == "" {
+		return 2, nil
+	}
+	head, weight, ok := strings.Cut(stackup, "-")
+	n, err := strconv.Atoi(strings.TrimSuffix(head, "L"))
+	// KiCad has 32 copper layers at most.
+	if err != nil || !ok || weight == "" || !strings.HasSuffix(head, "L") || n < 2 || n > 32 || n%2 != 0 {
+		return 0, fmt.Errorf("stackup %q: want <N>L-<weight>, N an even number of copper layers from 2 to 32", stackup)
+	}
+	return n, nil
 }
 
 func (bd *board) track(x1, y1, x2, y2, width float64, layer string) {
@@ -210,6 +234,16 @@ func Board(c Caps, o Options) (string, error) {
 			sort.Strings(names)
 			return "", fmt.Errorf("below = %q: want one of %s", o.Below, strings.Join(names, ", "))
 		}
+	}
+	ncu, err := copperLayers(o.Stackup)
+	if err != nil {
+		return "", err
+	}
+	if ncu >= 4 && (c.InnerTrackWidth == 0 || c.InnerTrackSpacing == 0) {
+		return "", fmt.Errorf("stackup %q has inner layers, but the %s rules give no inner track width and spacing (\"Trace Width (Inner Layer)\" or \"Trace Width\")", o.Stackup, c.Vendor)
+	}
+	if strings.HasPrefix(o.Below, "inner_") && ncu < 4 {
+		return "", fmt.Errorf("below = %q needs a stackup of 4 layers or more, not %q", o.Below, o.Stackup)
 	}
 	low := func(feature string, v float64) float64 {
 		if o.Below == feature {
@@ -344,10 +378,36 @@ func Board(c Caps, o Options) (string, error) {
 	y := CardH - e - tw/2
 	bd.track(47, y, 73, y, tw, "F.Cu")
 
+	// Inner layers: track widths and spacings on In1.Cu, in the free space
+	// right of the silkscreen ladders, labels on the silkscreen above.
+	if ncu >= 4 {
+		bd.heading("INNER WIDTH (In1)", 47, 39.4)
+		for i, w := range ladder(c.InnerTrackWidth, []float64{0.15, 0.2, 0.3, 0.5}, 4) {
+			x := 48.5 + float64(i)*4.5
+			if i == 0 {
+				w = low("inner_track_width", w)
+			}
+			bd.label(label(w), x, 41.4)
+			bd.track(x, 42.8, x, 45.6, w, "In1.Cu")
+		}
+		bd.heading("INNER SPACING (In1)", 67, 39.4)
+		itw := c.InnerTrackWidth
+		for i, g := range ladder(c.InnerTrackSpacing, []float64{0.15, 0.2}, 3) {
+			x := 69 + float64(i)*5
+			if i == 0 {
+				g = low("inner_track_spacing", g)
+			}
+			d := (g + itw) / 2
+			bd.label(label(g), x, 41.4)
+			bd.track(x-d, 42.8, x-d, 45.6, itw, "In1.Cu")
+			bd.track(x+d, 42.8, x+d, 45.6, itw, "In1.Cu")
+		}
+	}
+
 	var out strings.Builder
 	out.WriteString("(kicad_pcb\n\t(version 20241229)\n\t(generator \"hdlf_rules_fab_swatch\")\n\t(generator_version \"9.0\")\n")
 	out.WriteString("\t(general\n\t\t(thickness 1.6)\n\t\t(legacy_teardrops no)\n\t)\n\t(paper \"A4\")\n")
-	out.WriteString(layers)
+	out.WriteString(layerTable(ncu))
 	out.WriteString("\t(setup\n\t\t(pad_to_mask_clearance 0)\n\t\t(allow_soldermask_bridges_in_footprints no)\n\t\t(tenting front back)\n\t)\n")
 	out.WriteString("\t(net 0 \"\")\n")
 	for i, n := range bd.nets {
@@ -358,10 +418,23 @@ func Board(c Caps, o Options) (string, error) {
 	return out.String(), nil
 }
 
-const layers = `	(layers
-		(0 "F.Cu" signal)
-		(2 "B.Cu" signal)
-		(9 "F.Adhes" user "F.Adhesive")
+// layerTable is the board's (layers ...): the copper layers in stack
+// order, F.Cu, In1.Cu to In<n-2>.Cu, B.Cu, as KiCad writes them (KiCad
+// counts the inner layers by their place before B.Cu), then the user
+// layers. KiCad 9 numbers copper layers 0 (F.Cu), 2 (B.Cu), then 4, 6,
+// ... for the inner ones.
+func layerTable(copper int) string {
+	var b strings.Builder
+	b.WriteString("\t(layers\n\t\t(0 \"F.Cu\" signal)\n")
+	for i := 1; i <= copper-2; i++ {
+		fmt.Fprintf(&b, "\t\t(%d \"In%d.Cu\" signal)\n", 2+2*i, i)
+	}
+	b.WriteString("\t\t(2 \"B.Cu\" signal)\n")
+	b.WriteString(userLayers)
+	return b.String()
+}
+
+const userLayers = `		(9 "F.Adhes" user "F.Adhesive")
 		(11 "B.Adhes" user "B.Adhesive")
 		(13 "F.Paste" user)
 		(15 "B.Paste" user)

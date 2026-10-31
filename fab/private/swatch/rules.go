@@ -15,9 +15,14 @@ type Caps struct {
 	// Vendor is the prefix of the rule names, such as "JLCPCB".
 	Vendor string
 
-	TrackWidth   float64 // the narrowest track
-	TrackSpacing float64 // the smallest gap between tracks of two nets
-	EdgeClear    float64 // the least distance from a track to the board edge
+	TrackWidth   float64 // the narrowest track (outer layers)
+	TrackSpacing float64 // the smallest gap between tracks of two nets (outer layers)
+	// The same on inner layers: the vendor's "(Inner Layer)" rules, or the
+	// one rule the vendor has for every layer. Zero when the rules have
+	// neither, as a 2-layer stackup's need not; Board then refuses inner
+	// layers.
+	InnerTrackWidth, InnerTrackSpacing float64
+	EdgeClear                          float64 // the least distance from a track to the board edge
 
 	ViaHole    float64 // the smallest via drill
 	ViaAnnular float64 // the narrowest via ring
@@ -133,6 +138,21 @@ func ParseCaps(text string) (Caps, error) {
 	}
 	need(&c.TrackWidth, "track_width", "Trace Width", "Trace Width (Outer Layer)")
 	need(&c.TrackSpacing, "clearance", "Trace Spacing", "Trace Spacing (Outer Layer)")
+	// Inner: the "(Inner Layer)" rule, or the one rule for every layer;
+	// never an "(Outer Layer)" rule, which says nothing of inner layers.
+	// Optional: Board needs them only for 4 layers or more.
+	optional := func(dst *float64, constraint string, names ...string) {
+		for _, n := range names {
+			if r, ok := byName[n]; ok {
+				if v, ok := r.min[constraint]; ok {
+					*dst = v
+					return
+				}
+			}
+		}
+	}
+	optional(&c.InnerTrackWidth, "track_width", "Trace Width (Inner Layer)", "Trace Width")
+	optional(&c.InnerTrackSpacing, "clearance", "Trace Spacing (Inner Layer)", "Trace Spacing")
 	need(&c.EdgeClear, "edge_clearance", "Trace to Board Edge")
 	need(&c.ViaHole, "hole_size", "Via Hole Size")
 	need(&c.ViaAnnular, "annular_width", "Via Annular Ring")

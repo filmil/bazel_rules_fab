@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# fab_swatch (issue #24): each vendor's capability swatch, for every
+# fab_swatch (issues #24, #35): each vendor's capability swatch, for every
 # stackup, passes DRC with its own rules (the canary shows they loaded); each known-bad swatch, one
 # feature under the minimum, fails on that feature's rule and no other;
 # the files repeat byte for byte and make Gerbers and drill files, which
@@ -79,4 +79,48 @@ load("//fab:defs.bzl", "FAB_STACKUPS", "SWATCH_BELOW", "determinism_test", "fab_
         "pcbway",
     ]
     for feature, violation in SWATCH_BELOW.items()
+    if not feature.startswith("inner_")
+]
+
+# Known bad on an inner layer (issue #35): In1.Cu's narrowest track, or
+# its smallest gap, a step under the vendor's inner minimum, on each
+# stackup with inner layers.
+[
+    [
+        fab_swatch(
+            name = "%s_%s_below_%s" % (
+                vendor,
+                stackup.replace("-", "_"),
+                feature,
+            ),
+            below = feature,
+            stackup = stackup,
+            vendor = vendor,
+        ),
+        kicad_drc_test(
+            name = "%s_%s_below_%s_drc_test" % (
+                vendor,
+                stackup.replace("-", "_"),
+                feature,
+            ),
+            size = "small",
+            expect = SWATCH_BELOW[feature],
+            pcb = ":%s_%s_below_%s" % (
+                vendor,
+                stackup.replace("-", "_"),
+                feature,
+            ),
+        ),
+    ]
+    for vendor in [
+        "generic",
+        "jlcpcb",
+        "pcbway",
+    ]
+    for stackup in FAB_STACKUPS
+    if not stackup.startswith("2L")
+    for feature in [
+        "inner_track_spacing",
+        "inner_track_width",
+    ]
 ]

@@ -215,6 +215,53 @@ func Check(vendor string, data []byte, bare bool) ([]string, error) {
 	return problems, nil
 }
 
+// innerRe matches an inner copper layer's Protel extension, .g1 to .g99:
+// no leading zero, so .g01 is not one.
+var innerRe = regexp.MustCompile(`(?i)\.g([1-9][0-9]?)$`)
+
+// CheckCopperLayers checks that the ZIP holds the inner copper layers of a
+// board of `copper` layers: one Gerber each of In1.Cu to In<copper-2>.Cu
+// (Protel extensions .g1 to .g<copper-2>), and no other. It returns each
+// problem, sorted.
+func CheckCopperLayers(data []byte, copper int) ([]string, error) {
+	if copper < 2 || copper%2 != 0 {
+		return nil, fmt.Errorf("copper layers %d: want an even number, 2 or more", copper)
+	}
+	z, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return nil, fmt.Errorf("not a ZIP: %v", err)
+	}
+	have := map[int][]string{}
+	for _, f := range z.File {
+		if m := innerRe.FindStringSubmatch(f.Name); m != nil {
+			n, err := strconv.Atoi(m[1])
+			if err != nil {
+				return nil, fmt.Errorf("%s: %v", f.Name, err)
+			}
+			have[n] = append(have[n], f.Name)
+		}
+	}
+	var problems []string
+	for i := 1; i <= copper-2; i++ {
+		switch len(have[i]) {
+		case 0:
+			problems = append(problems, fmt.Sprintf("no inner copper layer In%d.Cu (*.g%d) on a board of %d layers", i, i, copper))
+		case 1:
+		default:
+			problems = append(problems, fmt.Sprintf("%d files of inner copper layer In%d.Cu: %s", len(have[i]), i, strings.Join(have[i], ", ")))
+		}
+	}
+	for n, names := range have {
+		if n < 1 || n > copper-2 {
+			for _, name := range names {
+				problems = append(problems, fmt.Sprintf("%s: an inner copper layer that a board of %d layers does not have", name, copper))
+			}
+		}
+	}
+	sort.Strings(problems)
+	return problems, nil
+}
+
 func read(f *zip.File) ([]byte, error) {
 	r, err := f.Open()
 	if err != nil {
