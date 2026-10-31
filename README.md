@@ -111,6 +111,34 @@ fab_package_test(
 )
 ```
 
+### Capability swatch
+
+`fab_swatch` is a credit-card board of a fab house's smallest features,
+each labelled with its size: track widths and spacings, vias, plated and
+non-plated holes, SMD pad gaps, silkscreen text and lines, copper to the
+edge, and, on a 4- or 6-layer stackup, the inner tracks. Its numbers come
+from the vendor's `fab_rules`, so it passes DRC with them; ordering one
+shows what the vendor makes.
+
+```starlark
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_swatch")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test")
+
+fab_swatch(
+    name = "jlcpcb_swatch",
+    stackup = "2L-1oz",
+    vendor = "jlcpcb",
+)
+
+kicad_drc_test(
+    name = "jlcpcb_swatch_drc_test",
+    pcb = ":jlcpcb_swatch",
+)
+```
+
+`below` draws one feature under the vendor's minimum, for a known-bad
+board that DRC must fail on that feature's rule (`SWATCH_BELOW`).
+
 ### Assembly swatch
 
 `fab_assembly_swatch` is a ladder of real parts that a vendor's assembly
@@ -189,10 +217,21 @@ See the overall description at the [project page][pp].
 ## Licenses
 
 This repository is under the Apache License 2.0 (`LICENSE`).
-Prebuilt tools and libraries that the build downloads are listed here, with
-their versions, sources and licenses, as they are added.
+The prebuilt tools and libraries that the build downloads, with their
+versions, sources and licenses:
 
 * kicad-druid 1.2.0 (https://github.com/Cimos/kicad-druid), the design
   rules of `fab_rules`: MIT. The source archive of its tag, pinned by
   sha256 in `MODULE.bazel`, fetched from this repository's release
   `mirror-kicad-druid-1.2.0` (`tools/mirror`) or from GitHub.
+* The Go SDK (go1.26.7 with rules_go 0.64.2, https://go.dev):
+  BSD-3-Clause. rules_go downloads it to build this module's packager,
+  checkers and swatch generators from source.
+* Through hdlf_rules_kicad, which runs KiCad for these rules: KiCad 9.0.9
+  (GPL-3.0-or-later), KiCad's symbol and footprint libraries 9.0.9
+  (CC-BY-SA 4.0 with the KiCad libraries exception), and the DejaVu
+  fonts 2.37; and, only for a build that renders or exports 3D models,
+  KiCad's 3D models (the same license as the libraries) and rain 2.2.1
+  (MIT), which fetches them. hdlf_rules_kicad's README lists each with
+  its source:
+  https://github.com/filmil/bazel_rules_kicad#licenses.
