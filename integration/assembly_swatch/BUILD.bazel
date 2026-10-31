@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# fab_assembly_swatch (issue #32) as a user writes it: each vendor's
-# schematic, from a module that depends on hdlf_rules_fab, passes ERC.
-load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
-load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_erc_test")
+# fab_assembly_swatch (issue #32) as a user writes it, from a module that
+# depends on hdlf_rules_fab: each vendor's schematic passes ERC, its board
+# passes DRC with the vendor's rules and schematic parity, and its package
+# passes fab_package_test.
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch", "fab_package", "fab_package_test")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_drc_test", "kicad_drill", "kicad_erc_test", "kicad_gerbers", "kicad_pos")
 
 [
     [
@@ -14,7 +16,69 @@ load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_erc_test")
         kicad_erc_test(
             name = vendor + "_erc_test",
             size = "small",
-            schematic = ":" + vendor,
+            schematic = ":%s_schematic" % vendor,
+        ),
+        kicad_drc_test(
+            name = vendor + "_drc_test",
+            size = "small",
+            pcb = ":" + vendor,
+        ),
+        kicad_gerbers(
+            name = vendor + "_gerbers",
+            pcb = ":" + vendor,
+        ),
+        kicad_drill(
+            name = vendor + "_drill",
+            pcb = ":" + vendor,
+        ),
+        kicad_pos(
+            name = vendor + "_pos",
+            pcb = ":" + vendor,
+        ),
+        kicad_bom(
+            name = vendor + "_bom",
+            fields = [
+                "Reference",
+                "Value",
+                "Footprint",
+                "${QUANTITY}",
+                "${DNP}",
+                "LCSC",
+                "MPN",
+                "Manufacturer",
+            ],
+            group_by = [
+                "Value",
+                "Footprint",
+                "${DNP}",
+                "LCSC",
+            ],
+            labels = [
+                "Refs",
+                "Value",
+                "Footprint",
+                "Qty",
+                "DNP",
+                "LCSC",
+                "MPN",
+                "Manufacturer",
+            ],
+            schematic = ":%s_schematic" % vendor,
+        ),
+        fab_package(
+            name = vendor + "_package",
+            board_name = vendor,
+            bom = ":%s_bom" % vendor,
+            drill = ":%s_drill" % vendor,
+            gerbers = ":%s_gerbers" % vendor,
+            pos = ":%s_pos" % vendor,
+            vendor = vendor,
+        ),
+        fab_package_test(
+            name = vendor + "_package_test",
+            size = "small",
+            package = ":%s_package" % vendor,
+            vendor = vendor,
         ),
     ]
     for vendor in [

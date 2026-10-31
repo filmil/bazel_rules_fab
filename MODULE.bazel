@@ -38,6 +38,11 @@ archive_override(
 kicad = use_extension("@hdlf_rules_kicad//kicad:extensions.bzl", "kicad")
 use_repo(kicad, "kicad_libs")
 
+# KiCad's 3D model libraries, fetched over BitTorrent only when a build
+# uses one: the tests render the assembly swatch with its parts.
+models = use_extension("@hdlf_rules_kicad//kicad:models.bzl", "models", dev_dependency = True)
+use_repo(models, "kicad_models")
+
 # kicad-druid 1.2.0: KiCad design rules for JLCPCB, PCBWay and a generic
 # fab (issue #8, MIT). Its releases have no assets, so this is the tag's
 # source archive, checked by its sha256.
