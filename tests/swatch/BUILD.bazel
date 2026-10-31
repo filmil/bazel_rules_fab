@@ -3,11 +3,12 @@
 # fab_swatch (issue #24): each vendor's capability swatch, for every
 # stackup, passes DRC with its own rules (the canary shows they loaded); each known-bad swatch, one
 # feature under the minimum, fails on that feature's rule and no other;
-# the files repeat byte for byte and make Gerbers. (No swap_test: the
+# the files repeat byte for byte and make Gerbers and drill files, which
+# //tests/fab_package_test packages for each vendor. (No swap_test: the
 # generator is this module's own Go, built from source in the helpers
 # toolchain, like fab_package's packager.)
-load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_gerbers")
-load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_drill", "kicad_gerbers")
+load("//fab:defs.bzl", "FAB_STACKUPS", "SWATCH_BELOW", "determinism_test", "fab_swatch")
 
 # The swatches: one line per vendor and stackup.
 [
@@ -30,6 +31,12 @@ load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
         kicad_gerbers(
             name = name + "_gerbers",
             pcb = ":" + name,
+            visibility = ["//tests/fab_package_test:__pkg__"],
+        ),
+        kicad_drill(
+            name = name + "_drill",
+            pcb = ":" + name,
+            visibility = ["//tests/fab_package_test:__pkg__"],
         ),
     ]
     for name, vendor, stackup in [
@@ -46,12 +53,7 @@ load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
             "jlcpcb",
             "pcbway",
         ]
-        for stackup in [
-            "2L-1oz",
-            "4L-1oz",
-            "4L-2oz",
-            "6L-1oz",
-        ]
+        for stackup in FAB_STACKUPS
     ]
 ]
 

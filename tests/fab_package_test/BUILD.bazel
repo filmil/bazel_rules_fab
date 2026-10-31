@@ -3,7 +3,7 @@
 # fab_package_test (issue #11): the fixture board's ZIPs pass for their
 # vendor, and known-bad ZIPs fail (T3): one missing a layer, and one
 # checked against the other vendor's columns and file names.
-load("//fab:defs.bzl", "fab_package", "fab_package_test")
+load("//fab:defs.bzl", "FAB_PACKAGE_VENDORS", "FAB_STACKUPS", "fab_package", "fab_package_test")
 load("//tests/fab_rules:fails_test.bzl", "fails_test")
 
 # One line per good ZIP: name, package, vendor.
@@ -99,6 +99,38 @@ fab_package_test(
     vendor = "jlcpcb",
     want_error = "main_bom.csv: a bare board's ZIP has no BOM or placement list",
 )
+
+# Each vendor's capability swatch (issue #31), for every stackup, packaged
+# as a bare board. The loop runs over every vendor fab_package knows, so a
+# new vendor without a swatch in //tests/swatch fails the build here.
+[
+    [
+        fab_package(
+            name = "swatch_" + swatch,
+            drill = "//tests/swatch:%s_drill" % swatch,
+            gerbers = "//tests/swatch:%s_gerbers" % swatch,
+            vendor = vendor,
+        ),
+        fab_package_test(
+            name = "swatch_%s_test" % swatch,
+            size = "small",
+            bare = True,
+            package = ":swatch_" + swatch,
+            vendor = vendor,
+        ),
+    ]
+    for vendor, swatch in [
+        (
+            vendor,
+            "%s_%s" % (
+                vendor,
+                stackup.replace("-", "_"),
+            ),
+        )
+        for vendor in FAB_PACKAGE_VENDORS
+        for stackup in FAB_STACKUPS
+    ]
+]
 
 # A BOM without positions, positions without a BOM, and rotations without
 # either, fail analysis.

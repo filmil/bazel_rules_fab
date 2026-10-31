@@ -13,14 +13,19 @@ entry point; everything under `//fab/private` may change without notice.
 """
 
 load("//fab/private:determinism.bzl", _determinism_test = "determinism_test")
-load("//fab/private:fab_rules.bzl", _fab_rules = "fab_rules")
-load("//fab/private:package.bzl", _fab_package = "fab_package")
+load("//fab/private:fab_rules.bzl", _FAB_STACKUPS = "FAB_STACKUPS", _fab_rules = "fab_rules")
+load("//fab/private:package.bzl", _FAB_PACKAGE_VENDORS = "FAB_PACKAGE_VENDORS", _fab_package = "fab_package")
 load("//fab/private:package_test.bzl", _fab_package_test = "fab_package_test")
 load("//fab/private:swap_test.bzl", _swap_test = "swap_test")
 load("//fab/private:swatch.bzl", _SWATCH_BELOW = "SWATCH_BELOW", _fab_swatch = "fab_swatch")
 load("//fab/private:toolchains.bzl", _tool_toolchain = "tool_toolchain")
 
 determinism_test = _determinism_test
+
+# The vendors fab_package knows, and the stackups fab_rules knows.
+FAB_PACKAGE_VENDORS = _FAB_PACKAGE_VENDORS
+FAB_STACKUPS = _FAB_STACKUPS
+
 fab_package = _fab_package
 fab_package_test = _fab_package_test
 fab_rules = _fab_rules
