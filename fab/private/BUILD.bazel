@@ -11,9 +11,11 @@ bzl_library(
         "package_test.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
+        "swatch.bzl",
         "toolchains.bzl",
     ],
     visibility = ["//fab:__subpackages__"],
+    deps = ["@rules_kicad//kicad:defs"],
 )
 
 # A setting that changes nothing but the configuration. determinism_test
