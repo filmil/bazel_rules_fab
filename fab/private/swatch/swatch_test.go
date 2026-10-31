@@ -4,6 +4,7 @@ package swatch
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -36,14 +37,17 @@ func TestParseCaps(t *testing.T) {
 		want Caps
 	}{
 		{*jlcpcb, Caps{
+			// One track rule for every layer: inner as outer.
 			Vendor: "JLCPCB", TrackWidth: 0.09, TrackSpacing: 0.09, EdgeClear: 0.2,
+			InnerTrackWidth: 0.09, InnerTrackSpacing: 0.09,
 			ViaHole: 0.15, ViaAnnular: 0.05, SmallViaHole: 0.3, SmallViaPad: 0.45,
 			PTHHole: 0.15, PTHAnnular: 0.15, NPTHHole: 0.5, PadSpacing: 0.15,
 			TextHeight: 1, TextThickness: 0.15, SilkClear: 0.15,
 		}},
 		{*pcbway, Caps{
-			// The outer layers' track rules: the swatch has two layers.
+			// "(Outer Layer)" and "(Inner Layer)" rules of their own.
 			Vendor: "PCBWay", TrackWidth: 0.09, TrackSpacing: 0.09, EdgeClear: 0.3,
+			InnerTrackWidth: 0.1, InnerTrackSpacing: 0.1,
 			ViaHole: 0.2, ViaAnnular: 0.15,
 			PTHHole: 0.2, PTHAnnular: 0.15, NPTHHole: 0.5, PadSpacing: 0.127,
 			TextHeight: 0.8, TextThickness: 0.15, SilkClear: 0.15,
@@ -117,12 +121,12 @@ func TestBoard(t *testing.T) {
 	}
 	for _, want := range []string{
 		`(gr_text "JLCPCB capability swatch, 2L-1oz"`,
-		"(width 0.09)",          // the narrowest track
-		"(drill 0.15)",          // the smallest via drill
-		"(size 0.45)",           // its pad, by the extra-cost rule
-		`(gr_text "0.09"`,       // a label
-		`(layer "Edge.Cuts")`,   // the outline
-		"(start 23.18 20)",      // which starts after the top left corner
+		"(width 0.09)",        // the narrowest track
+		"(drill 0.15)",        // the smallest via drill
+		"(size 0.45)",         // its pad, by the extra-cost rule
+		`(gr_text "0.09"`,     // a label
+		`(layer "Edge.Cuts")`, // the outline
+		"(start 23.18 20)",    // which starts after the top left corner
 	} {
 		if !strings.Contains(a, want) {
 			t.Errorf("the board lacks %q", want)
@@ -132,7 +136,11 @@ func TestBoard(t *testing.T) {
 		t.Error("unbalanced parentheses")
 	}
 	for f := range Features {
-		bad, err := Board(caps, Options{Below: f})
+		o := Options{Below: f}
+		if strings.HasPrefix(f, "inner_") {
+			o.Stackup = "4L-1oz"
+		}
+		bad, err := Board(caps, o)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -157,6 +165,83 @@ func TestBoard(t *testing.T) {
 	fat.PTHAnnular = 1.5
 	if _, err := Board(fat, Options{}); err == nil || !strings.Contains(err.Error(), "silkscreen clearance") {
 		t.Errorf("pads too big: %v", err)
+	}
+}
+
+func TestInnerLayers(t *testing.T) {
+	caps, err := ParseCaps(read(t, *pcbway))
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, err := Board(caps, Options{Stackup: "2L-1oz"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(two, "In1.Cu") || strings.Contains(two, "INNER") {
+		t.Error("a 2L board has inner layers")
+	}
+	for _, c := range []struct {
+		stackup string
+		inner   int
+	}{{"4L-1oz", 2}, {"4L-2oz", 2}, {"6L-1oz", 4}} {
+		b, err := Board(caps, Options{Stackup: c.stackup})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 1; i <= 4; i++ {
+			name := fmt.Sprintf("\"In%d.Cu\" signal", i)
+			if got := strings.Contains(b, name); got != (i <= c.inner) {
+				t.Errorf("%s: In%d.Cu in the layer table: %v", c.stackup, i, got)
+			}
+		}
+		for _, want := range []string{
+			`(gr_text "INNER WIDTH (In1)"`,
+			"(width 0.1)\n\t\t(layer \"In1.Cu\")", // PCBWay's inner minimum, not the outer 0.09
+			`(gr_text "INNER SPACING (In1)"`,
+		} {
+			if !strings.Contains(b, want) {
+				t.Errorf("%s: the board lacks %q", c.stackup, want)
+			}
+		}
+	}
+	bad, err := Board(caps, Options{Stackup: "6L-1oz", Below: "inner_track_width"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(bad, "(width 0.08)\n\t\t(layer \"In1.Cu\")") {
+		t.Error("below inner_track_width: no 0.08 track on In1.Cu")
+	}
+	for _, f := range []string{"inner_track_width", "inner_track_spacing"} {
+		if _, err := Board(caps, Options{Stackup: "2L-1oz", Below: f}); err == nil || !strings.Contains(err.Error(), "4 layers or more") {
+			t.Errorf("%s on 2L: %v", f, err)
+		}
+	}
+	// An inner spacing under PCBWay's 0.1 mm inner minimum: 0.08.
+	gap, err := Board(caps, Options{Stackup: "4L-1oz", Below: "inner_track_spacing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gap == bad {
+		t.Error("below inner_track_spacing: no change")
+	}
+	if !strings.Contains(gap, `(gr_text "0.08"`) {
+		t.Error("below inner_track_spacing: no 0.08 label")
+	}
+	// Rules with outer track rules and no inner ones (a 2-layer stackup's)
+	// make a 2-layer swatch, and no 4-layer one: the outer minimums say
+	// nothing of inner layers.
+	outer := caps
+	outer.InnerTrackWidth, outer.InnerTrackSpacing = 0, 0
+	if _, err := Board(outer, Options{Stackup: "2L-1oz"}); err != nil {
+		t.Errorf("2L with outer rules only: %v", err)
+	}
+	if _, err := Board(outer, Options{Stackup: "4L-1oz"}); err == nil || !strings.Contains(err.Error(), "no inner track width and spacing") {
+		t.Errorf("4L with outer rules only: %v", err)
+	}
+	for _, s := range []string{"3L-1oz", "L-1oz", "4X-1oz", "four", "4L", "4L-", "34L-1oz"} {
+		if _, err := Board(caps, Options{Stackup: s}); err == nil || !strings.Contains(err.Error(), "even number of copper layers") {
+			t.Errorf("stackup %q: %v", s, err)
+		}
 	}
 }
 

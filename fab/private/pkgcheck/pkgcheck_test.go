@@ -5,6 +5,7 @@ package pkgcheck
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -187,5 +188,51 @@ func TestBare(t *testing.T) {
 	delete(f, "main-F_Cu.gtl")
 	if p, _ := Check("jlcpcb", zipOf(t, f), true); len(p) != 1 || !strings.Contains(p[0], "no top copper") {
 		t.Errorf("a bare ZIP without F_Cu: %v", p)
+	}
+}
+
+func TestCopperLayers(t *testing.T) {
+	six := good() // it has main-In1_Cu.g1
+	for i := 2; i <= 4; i++ {
+		six[fmt.Sprintf("main-In%d_Cu.g%d", i, i)] = "G04*"
+	}
+	for _, c := range []struct {
+		files  map[string]string
+		copper int
+		want   string // "" for none
+	}{
+		{six, 6, ""},
+		{six, 4, "main-In3_Cu.g3: an inner copper layer that a board of 4 layers does not have"},
+		{good(), 6, "no inner copper layer In2.Cu (*.g2) on a board of 6 layers"},
+		{good(), 2, "main-In1_Cu.g1: an inner copper layer that a board of 2 layers does not have"},
+	} {
+		p, err := CheckCopperLayers(zipOf(t, c.files), c.copper)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := strings.Join(p, "\n")
+		if c.want == "" && got != "" || c.want != "" && !strings.Contains(got, c.want) {
+			t.Errorf("%d layers: want %q, got:\n%s", c.copper, c.want, got)
+		}
+	}
+	two := good()
+	two["other-In1_Cu.G1"] = "G04*"
+	if p, _ := CheckCopperLayers(zipOf(t, two), 4); !strings.Contains(strings.Join(p, "\n"), "2 files of inner copper layer In1.Cu") {
+		t.Errorf("two In1 files: %v", p)
+	}
+	// Each file of a layer the board lacks is named; .g01 is no layer.
+	extra := good()
+	extra["a-In5.g5"], extra["b-In5.g5"], extra["main.g01"] = "G04*", "G04*", "G04*"
+	p, _ := CheckCopperLayers(zipOf(t, extra), 4)
+	for _, want := range []string{"a-In5.g5: an inner", "b-In5.g5: an inner"} {
+		if !strings.Contains(strings.Join(p, "\n"), want) {
+			t.Errorf("want %q in %v", want, p)
+		}
+	}
+	if strings.Contains(strings.Join(p, "\n"), "g01") {
+		t.Errorf(".g01 taken for an inner layer: %v", p)
+	}
+	if _, err := CheckCopperLayers(zipOf(t, good()), 5); err == nil {
+		t.Error("5 layers accepted")
 	}
 }

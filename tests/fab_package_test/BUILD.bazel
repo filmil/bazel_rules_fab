@@ -101,7 +101,7 @@ fab_package_test(
 )
 
 # Each vendor's capability swatch (issue #31), for every stackup, packaged
-# as a bare board. The loop runs over every vendor fab_package knows, so a
+# as a bare board, with its inner copper layers' Gerbers (issue #35). The loop runs over every vendor fab_package knows, so a
 # new vendor without a swatch in //tests/swatch fails the build here.
 [
     [
@@ -115,17 +115,21 @@ fab_package_test(
             name = "swatch_%s_test" % swatch,
             size = "small",
             bare = True,
+            # A 4L swatch's ZIP has In1 and In2, a 6L one's In1 to In4
+            # (issue #35).
+            copper_layers = int(stackup.split("L")[0]),
             package = ":swatch_" + swatch,
             vendor = vendor,
         ),
     ]
-    for vendor, swatch in [
+    for vendor, swatch, stackup in [
         (
             vendor,
             "%s_%s" % (
                 vendor,
                 stackup.replace("-", "_"),
             ),
+            stackup,
         )
         for vendor in FAB_PACKAGE_VENDORS
         for stackup in FAB_STACKUPS
@@ -180,4 +184,27 @@ fails_test(
     size = "small",
     message = "a bare board has none",
     target_under_test = ":bare_rotated",
+)
+
+# Known bad: a 6L swatch's ZIP checked as an 8-layer board's lacks In5 and
+# In6.
+fab_package_test(
+    name = "swatch_missing_inner_test",
+    size = "small",
+    bare = True,
+    copper_layers = 8,
+    package = ":swatch_jlcpcb_6L_1oz",
+    vendor = "jlcpcb",
+    want_error = "no inner copper layer In5.Cu (*.g5) on a board of 8 layers",
+)
+
+# ...and checked as a 4-layer board's has In3 and In4 too many.
+fab_package_test(
+    name = "swatch_extra_inner_test",
+    size = "small",
+    bare = True,
+    copper_layers = 4,
+    package = ":swatch_jlcpcb_6L_1oz",
+    vendor = "jlcpcb",
+    want_error = "jlcpcb_6L_1oz-In3_Cu.g3: an inner copper layer that a board of 4 layers does not have",
 )
