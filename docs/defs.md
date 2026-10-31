@@ -267,7 +267,7 @@ determinism_test(
 ## fab_swatch
 
 <pre>
-load("@rules_fab//fab:defs.bzl", "fab_swatch")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_swatch")
 
 fab_swatch(<a href="#fab_swatch-name">name</a>, <a href="#fab_swatch-vendor">vendor</a>, <a href="#fab_swatch-stackup">stackup</a>, <a href="#fab_swatch-below">below</a>, <a href="#fab_swatch-kwargs">**kwargs</a>)
 </pre>

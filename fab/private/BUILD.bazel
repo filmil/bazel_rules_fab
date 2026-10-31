@@ -15,7 +15,7 @@ bzl_library(
         "toolchains.bzl",
     ],
     visibility = ["//fab:__subpackages__"],
-    deps = ["@rules_kicad//kicad:defs"],
+    deps = ["@hdlf_rules_kicad//kicad:defs"],
 )
 
 # A setting that changes nothing but the configuration. determinism_test

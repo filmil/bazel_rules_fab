@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """fab_swatch: a credit-card board of a fab house's smallest features (issue #24)."""
 
-load("@rules_kicad//kicad:defs.bzl", "kicad_pcb")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_pcb")
 load(":fab_rules.bzl", "FAB_STACKUPS", "FAB_VENDORS", "fab_rules")
 load(":run_tool.bzl", "HELPERS_TOOLCHAIN_TYPE", "RUN_TOOL_TOOLCHAINS", "run_tool")
 

@@ -6,7 +6,7 @@
 # the files repeat byte for byte and make Gerbers. (No swap_test: the
 # generator is this module's own Go, built from source in the helpers
 # toolchain, like fab_package's packager.)
-load("@rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_gerbers")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_gerbers")
 load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
 
 # The swatches: one line per vendor and stackup.
