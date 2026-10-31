@@ -26,6 +26,7 @@ config_setting(
 
 helpers_toolchain(
     name = "helpers_impl",
+    assembly = "//fab/private/assembly:cmd",
     compare = "//fab/private/detcompare",
     launcher = "//fab/private/launcher",
     packager = "//fab/private/packager:cmd",

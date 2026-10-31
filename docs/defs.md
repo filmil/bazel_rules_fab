@@ -274,6 +274,59 @@ determinism_test(
 | <a id="determinism_test-kwargs"></a>kwargs |  common test attributes, such as `size` and `tags`.   |  none |
 
 
+<a id="fab_assembly_swatch"></a>
+
+## fab_assembly_swatch
+
+<pre>
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
+
+fab_assembly_swatch(<a href="#fab_assembly_swatch-name">name</a>, <a href="#fab_assembly_swatch-vendor">vendor</a>, <a href="#fab_assembly_swatch-start">start</a>, <a href="#fab_assembly_swatch-kwargs">**kwargs</a>)
+</pre>
+
+An assembly swatch: a ladder of real parts, each between two test points.
+
+```starlark
+fab_assembly_swatch(
+    name = "jlcpcb_assembly",
+    vendor = "jlcpcb",
+)
+
+kicad_erc_test(
+    name = "jlcpcb_assembly_erc_test",
+    schematic = ":jlcpcb_assembly",
+)
+```
+
+The rungs, smallest first: 1 kOhm 1 % resistors in 0201, 0402, 0603,
+0805 and 1206, then SOT-23, SOIC-8, TSSOP-16 (0.65 mm), QFN-16
+(0.5 mm) and LQFP-48 (0.5 mm), each a real catalog part with its LCSC
+number, MPN, manufacturer and datasheet (`ASSEMBLY_PARTS`). The
+vendor's assembly limits (`ASSEMBLY_VENDORS`, each with its source)
+leave out what it cannot place: JLCPCB's Economic PCBA starts at 0402.
+
+Each part's two measured pins go to two test points, so a meter shows
+whether it was soldered: 1.00 kOhm on a resistor, a diode drop of about
+0.6 V on an IC, across a diode its datasheet documents. Its other pins
+carry no-connect flags, and a net with a power input pin has a
+PWR_FLAG, so ERC passes. The fields carry LCSC, MPN and Manufacturer
+for the BOM.
+
+`name` is a `kicad_schematic`, for `kicad_erc_test` and `kicad_bom`.
+The board and its package follow in issue #32 (b).
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="fab_assembly_swatch-name"></a>name |  the schematic's name.   |  none |
+| <a id="fab_assembly_swatch-vendor"></a>vendor |  the fab house: jlcpcb or pcbway.   |  none |
+| <a id="fab_assembly_swatch-start"></a>start |  the first rung (such as "0402"); by default the smallest the vendor places. A rung the vendor cannot place fails: a known-bad swatch.   |  `""` |
+| <a id="fab_assembly_swatch-kwargs"></a>kwargs |  common attributes, such as `visibility` and `tags`.   |  none |
+
+
 <a id="fab_swatch"></a>
 
 ## fab_swatch

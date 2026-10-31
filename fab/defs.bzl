@@ -12,6 +12,12 @@ https://github.com/filmil/bazel_rules_fab). This file is the only public
 entry point; everything under `//fab/private` may change without notice.
 """
 
+load(
+    "//fab/private:assembly.bzl",
+    _ASSEMBLY_PARTS = "ASSEMBLY_PARTS",
+    _ASSEMBLY_VENDORS = "ASSEMBLY_VENDORS",
+    _fab_assembly_swatch = "fab_assembly_swatch",
+)
 load("//fab/private:determinism.bzl", _determinism_test = "determinism_test")
 load("//fab/private:fab_rules.bzl", _FAB_STACKUPS = "FAB_STACKUPS", _fab_rules = "fab_rules")
 load("//fab/private:package.bzl", _FAB_PACKAGE_VENDORS = "FAB_PACKAGE_VENDORS", _fab_package = "fab_package")
@@ -20,6 +26,9 @@ load("//fab/private:swap_test.bzl", _swap_test = "swap_test")
 load("//fab/private:swatch.bzl", _SWATCH_BELOW = "SWATCH_BELOW", _fab_swatch = "fab_swatch")
 load("//fab/private:toolchains.bzl", _tool_toolchain = "tool_toolchain")
 
+ASSEMBLY_PARTS = _ASSEMBLY_PARTS
+ASSEMBLY_VENDORS = _ASSEMBLY_VENDORS
+fab_assembly_swatch = _fab_assembly_swatch
 determinism_test = _determinism_test
 
 # The vendors fab_package knows, and the stackups fab_rules knows.

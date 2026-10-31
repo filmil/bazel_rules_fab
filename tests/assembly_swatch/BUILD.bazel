@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_assembly_swatch (issue #32, part a): each vendor's schematic passes
+# ERC, its BOM carries every part's LCSC number, MPN and manufacturer,
+# and a part below the vendor's smallest package is refused (spec T3).
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_erc_test")
+load("@rules_go//go:def.bzl", "go_test")
+load("//fab:defs.bzl", "determinism_test", "fab_assembly_swatch")
+load("//tests/fab_rules:fails_test.bzl", "fails_test")
+
+[
+    [
+        fab_assembly_swatch(
+            name = vendor,
+            vendor = vendor,
+        ),
+        kicad_erc_test(
+            name = vendor + "_erc_test",
+            size = "small",
+            schematic = ":" + vendor,
+        ),
+        kicad_bom(
+            name = vendor + "_bom",
+            fields = [
+                "Reference",
+                "Value",
+                "Footprint",
+                "${QUANTITY}",
+                "${DNP}",
+                "LCSC",
+                "MPN",
+                "Manufacturer",
+            ],
+            group_by = [
+                "Value",
+                "Footprint",
+                "${DNP}",
+                "LCSC",
+            ],
+            labels = [
+                "Refs",
+                "Value",
+                "Footprint",
+                "Qty",
+                "DNP",
+                "LCSC",
+                "MPN",
+                "Manufacturer",
+            ],
+            schematic = ":" + vendor,
+        ),
+        determinism_test(
+            name = vendor + "_determinism_test",
+            size = "small",
+            target = ":%s_files" % vendor,
+        ),
+    ]
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+]
+
+go_test(
+    name = "bom_test",
+    size = "small",
+    srcs = ["bom_test.go"],
+    args = [
+        "--jlcpcb=$(rlocationpath :jlcpcb_bom)",
+        "--pcbway=$(rlocationpath :pcbway_bom)",
+    ],
+    data = [
+        ":jlcpcb_bom",
+        ":pcbway_bom",
+    ],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+# Known bad (spec T3): JLCPCB's Economic PCBA places nothing below 0402.
+fab_assembly_swatch(
+    name = "jlcpcb_0201",
+    start = "0201",
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "jlcpcb_0201_test",
+    size = "small",
+    message = "JLCPCB Economic PCBA cannot place 0201: below its smallest package 0402",
+    target_under_test = ":jlcpcb_0201_files",
+)

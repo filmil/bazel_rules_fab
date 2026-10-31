@@ -5,6 +5,7 @@ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 bzl_library(
     name = "private",
     srcs = [
+        "assembly.bzl",
         "determinism.bzl",
         "fab_rules.bzl",
         "package.bzl",
