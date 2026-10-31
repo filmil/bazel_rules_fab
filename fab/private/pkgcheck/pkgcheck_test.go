@@ -41,7 +41,7 @@ func good() map[string]string {
 
 func check(t *testing.T, vendor string, f map[string]string) string {
 	t.Helper()
-	p, err := Check(vendor, zipOf(t, f))
+	p, err := Check(vendor, zipOf(t, f), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,10 +151,37 @@ func TestVerdict(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	if _, err := Check("oshpark", nil); err == nil || !strings.Contains(err.Error(), "want one of jlcpcb, pcbway") {
+	if _, err := Check("oshpark", nil, false); err == nil || !strings.Contains(err.Error(), "want one of jlcpcb, pcbway") {
 		t.Errorf("unknown vendor: %v", err)
 	}
-	if _, err := Check("jlcpcb", []byte("not a zip")); err == nil || !strings.Contains(err.Error(), "not a ZIP") {
+	if _, err := Check("jlcpcb", []byte("not a zip"), false); err == nil || !strings.Contains(err.Error(), "not a ZIP") {
 		t.Errorf("not a zip: %v", err)
+	}
+}
+
+func TestBare(t *testing.T) {
+	f := good()
+	delete(f, "main_bom.csv")
+	delete(f, "main_cpl.csv")
+	for _, vendor := range []string{"jlcpcb", "pcbway"} {
+		p, err := Check(vendor, zipOf(t, f), true)
+		if err != nil || len(p) != 0 {
+			t.Errorf("%s: a bare ZIP: %v %v", vendor, p, err)
+		}
+	}
+	// Checked as a board with parts, it lacks both lists.
+	p, _ := Check("jlcpcb", zipOf(t, f), false)
+	if all := strings.Join(p, "\n"); !strings.Contains(all, "no BOM (*_bom.csv)") || !strings.Contains(all, "no placement list (*_cpl.csv)") {
+		t.Errorf("a bare ZIP checked as full: %v", p)
+	}
+	// A ZIP with parts, checked as bare: each list is a problem.
+	p, _ = Check("jlcpcb", zipOf(t, good()), true)
+	if all := strings.Join(p, "\n"); len(p) != 2 || !strings.Contains(all, "main_bom.csv: a bare board's ZIP has no BOM or placement list") {
+		t.Errorf("a full ZIP checked as bare: %v", p)
+	}
+	// Bare, but without its copper: still checked.
+	delete(f, "main-F_Cu.gtl")
+	if p, _ := Check("jlcpcb", zipOf(t, f), true); len(p) != 1 || !strings.Contains(p[0], "no top copper") {
+		t.Errorf("a bare ZIP without F_Cu: %v", p)
 	}
 }

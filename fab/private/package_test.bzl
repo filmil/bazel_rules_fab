@@ -18,6 +18,7 @@ def _fab_package_test_impl(ctx):
             runfiles = ctx.runfiles(files = [ctx.file.package]).merge(pkgcheck.default_runfiles),
         ),
         RunEnvironmentInfo(environment = {
+            "PKG_BARE": "1" if ctx.attr.bare else "",
             "PKG_VENDOR": ctx.attr.vendor,
             "PKG_WANT_ERROR": ctx.attr.want_error,
             "PKG_ZIP": ctx.file.package.short_path,
@@ -45,7 +46,8 @@ from the vendor's documents, so a bug in fab_package fails it. It checks:
   outline and a drill file; paste and inner copper layers are allowed;
   nothing else, and nothing empty or below the ZIP's root;
 * one BOM and one placement list, named for the same board, with the
-  vendor's columns in the vendor's order, and at least one row each;
+  vendor's columns in the vendor's order, and at least one row each; or,
+  with `bare = True` (a `fab_package` without `bom` and `pos`), neither;
 * every row has a designator; in the placement list, X and Y are in mm,
   the rotation is at least 0 and below 360, and the layer is one the
   vendor names.
@@ -64,6 +66,11 @@ through-hole parts.
             doc = "The fab house: " + ", ".join(FAB_PACKAGE_VENDORS) + ".",
             mandatory = True,
             values = FAB_PACKAGE_VENDORS,
+        ),
+        "bare": attr.bool(
+            doc = "The ZIP is a bare board's: it must have no BOM and no placement list. " +
+                  "False by default: it must have one of each, so a package that lost them " +
+                  "fails.",
         ),
         "want_error": attr.string(
             doc = "For a known-bad ZIP: text that one of the problems must contain. The " +

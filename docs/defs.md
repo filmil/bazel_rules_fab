@@ -63,6 +63,11 @@ no unit.
 
 `<board>` is `board_name`, or the last part of the target's name.
 
+A bare board, one with no parts to place, leaves out `bom` and `pos`
+(both, or neither): its ZIP holds only the Gerber and drill files, which
+is what both vendors take for a board without assembly. Check it with
+`fab_package_test(bare = True)`.
+
 Its entries are sorted by name, dated 1980-01-01 and mode 0644, so the
 same board gives the same bytes.
 
@@ -80,10 +85,10 @@ default: hdlf_rules_fab ships no table yet.
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="fab_package-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="fab_package-board_name"></a>board_name |  The board's name in the CSV files' names; the target's name if empty.   | String | optional |  `""`  |
-| <a id="fab_package-bom"></a>bom |  The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, Footprint, and DNP and LCSC when present.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-bom"></a>bom |  The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, Footprint, and DNP and LCSC when present. Leave it and `pos` out for a bare board.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="fab_package-drill"></a>drill |  The drill files (`kicad_drill`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package-gerbers"></a>gerbers |  The Gerber layers (`kicad_gerbers`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
-| <a id="fab_package-pos"></a>pos |  The positions (`kicad_pos`): a CSV with the columns Ref, Val, Package, PosX, PosY, Rot and Side, in mm.   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
+| <a id="fab_package-pos"></a>pos |  The positions (`kicad_pos`): a CSV with the columns Ref, Val, Package, PosX, PosY, Rot and Side, in mm. Leave it and `bom` out for a bare board.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="fab_package-rotations"></a>rotations |  Rotation corrections: footprint regular expression to degrees. Empty by default.   | <a href="https://bazel.build/rules/lib/core/dict">Dictionary: String -> String</a> | optional |  `{}`  |
 | <a id="fab_package-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
 
@@ -95,7 +100,7 @@ default: hdlf_rules_fab ships no table yet.
 <pre>
 load("@hdlf_rules_fab//fab:defs.bzl", "fab_package_test")
 
-fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
+fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-bare">bare</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
 </pre>
 
 Checks a fab house's ZIP against what the vendor takes.
@@ -116,7 +121,8 @@ from the vendor's documents, so a bug in fab_package fails it. It checks:
   outline and a drill file; paste and inner copper layers are allowed;
   nothing else, and nothing empty or below the ZIP's root;
 * one BOM and one placement list, named for the same board, with the
-  vendor's columns in the vendor's order, and at least one row each;
+  vendor's columns in the vendor's order, and at least one row each; or,
+  with `bare = True` (a `fab_package` without `bom` and `pos`), neither;
 * every row has a designator; in the placement list, X and Y are in mm,
   the rotation is at least 0 and below 360, and the layer is one the
   vendor names.
@@ -131,6 +137,7 @@ through-hole parts.
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="fab_package_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="fab_package_test-bare"></a>bare |  The ZIP is a bare board's: it must have no BOM and no placement list. False by default: it must have one of each, so a package that lost them fails.   | Boolean | optional |  `False`  |
 | <a id="fab_package_test-package"></a>package |  The ZIP (`fab_package`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package_test-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
 | <a id="fab_package_test-want_error"></a>want_error |  For a known-bad ZIP: text that one of the problems must contain. The test then passes only if the check finds it. Empty by default: the ZIP must be good.   | String | optional |  `""`  |

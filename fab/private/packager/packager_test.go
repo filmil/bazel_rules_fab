@@ -281,3 +281,27 @@ func TestPCBWayNames(t *testing.T) {
 		t.Errorf("names %q", got)
 	}
 }
+
+func TestZipBare(t *testing.T) {
+	fab := []File{{"g/main-F_Cu.gtl", []byte("top")}, {"d/main.drl", []byte("drill")}}
+	var b bytes.Buffer
+	if err := Zip(&b, jlc, "main", fab, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	z, err := zip.NewReader(bytes.NewReader(b.Bytes()), int64(b.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, f := range z.File {
+		names = append(names, f.Name)
+	}
+	if got := strings.Join(names, " "); got != "main-F_Cu.gtl main.drl" {
+		t.Errorf("a bare ZIP holds %q", got)
+	}
+	for _, c := range []struct{ bom, cpl []byte }{{[]byte("b"), nil}, {nil, []byte("c")}} {
+		if err := Zip(&b, jlc, "main", fab, c.bom, c.cpl); err == nil || !strings.Contains(err.Error(), "give both, or neither") {
+			t.Errorf("one list only: %v", err)
+		}
+	}
+}
