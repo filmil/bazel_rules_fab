@@ -100,6 +100,36 @@ fab_package_test(
     want_error = "main_bom.csv: a bare board's ZIP has no BOM or placement list",
 )
 
+# Each vendor's capability swatch (issue #31), for every stackup, packaged
+# as a bare board: one line per vendor, so a vendor without a swatch shows.
+[
+    [
+        fab_package(
+            name = "swatch_%s_%s" % (vendor, stackup),
+            drill = "//tests/swatch:%s_%s_drill" % (vendor, stackup),
+            gerbers = "//tests/swatch:%s_%s_gerbers" % (vendor, stackup),
+            vendor = vendor,
+        ),
+        fab_package_test(
+            name = "swatch_%s_%s_test" % (vendor, stackup),
+            size = "small",
+            bare = True,
+            package = ":swatch_%s_%s" % (vendor, stackup),
+            vendor = vendor,
+        ),
+    ]
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+    for stackup in [
+        "2L_1oz",
+        "4L_1oz",
+        "4L_2oz",
+        "6L_1oz",
+    ]
+]
+
 # A BOM without positions, positions without a BOM, and rotations without
 # either, fail analysis.
 fab_package(
