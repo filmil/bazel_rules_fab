@@ -100,7 +100,8 @@ fab_package_test(
     want_error = "main_bom.csv: a bare board's ZIP has no BOM or placement list",
 )
 
-# A BOM without positions, and rotations without either, fail analysis.
+# A BOM without positions, positions without a BOM, and rotations without
+# either, fail analysis.
 fab_package(
     name = "bom_only",
     bom = "//tests/fab_package:board/bom.csv",
@@ -115,6 +116,22 @@ fails_test(
     size = "small",
     message = "bom goes with pos: give both, or neither for a bare board",
     target_under_test = ":bom_only",
+)
+
+fab_package(
+    name = "pos_only",
+    drill = "//tests/fab_package:board/drill/main.drl",
+    gerbers = "//tests/fab_package:gerbers",
+    pos = "//tests/fab_package:board/pos.csv",
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "pos_only_test",
+    size = "small",
+    message = "bom goes with pos: give both, or neither for a bare board",
+    target_under_test = ":pos_only",
 )
 
 fab_package(

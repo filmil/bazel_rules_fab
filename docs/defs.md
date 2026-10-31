@@ -61,7 +61,8 @@ no unit.
   `TB` (`T`, `B`), `Rotation`, `Comment` (the value). PCBWay's sample
   also has `Ref X/Y` and `Pad X/Y`; kicad_pos does not give them.
 
-`<board>` is `board_name`, or the last part of the target's name.
+`<board>` is `board_name`, or the last part of the target's name; a bare
+board has no CSV files for it to name.
 
 A bare board, one with no parts to place, leaves out `bom` and `pos`
 (both, or neither): its ZIP holds only the Gerber and drill files, which
@@ -84,7 +85,7 @@ default: hdlf_rules_fab ships no table yet.
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="fab_package-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="fab_package-board_name"></a>board_name |  The board's name in the CSV files' names; the target's name if empty.   | String | optional |  `""`  |
+| <a id="fab_package-board_name"></a>board_name |  The board's name in the CSV files' names; the target's name if empty. A bare board's ZIP has no CSV files, so it has no effect there.   | String | optional |  `""`  |
 | <a id="fab_package-bom"></a>bom |  The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, Footprint, and DNP and LCSC when present. Leave it and `pos` out for a bare board.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="fab_package-drill"></a>drill |  The drill files (`kicad_drill`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package-gerbers"></a>gerbers |  The Gerber layers (`kicad_gerbers`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |

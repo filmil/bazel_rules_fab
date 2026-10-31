@@ -175,7 +175,11 @@ func TestBare(t *testing.T) {
 		t.Errorf("a bare ZIP checked as full: %v", p)
 	}
 	// A ZIP with parts, checked as bare: each list is a problem.
-	p, _ = Check("jlcpcb", zipOf(t, good()), true)
+	// Only the lists are problems, not their contents: a broken BOM adds
+	// nothing.
+	full := good()
+	full["main_bom.csv"] = "not,a,bom\n"
+	p, _ = Check("jlcpcb", zipOf(t, full), true)
 	if all := strings.Join(p, "\n"); len(p) != 2 || !strings.Contains(all, "main_bom.csv: a bare board's ZIP has no BOM or placement list") {
 		t.Errorf("a full ZIP checked as bare: %v", p)
 	}

@@ -299,7 +299,11 @@ func TestZipBare(t *testing.T) {
 	if got := strings.Join(names, " "); got != "main-F_Cu.gtl main.drl" {
 		t.Errorf("a bare ZIP holds %q", got)
 	}
-	for _, c := range []struct{ bom, cpl []byte }{{[]byte("b"), nil}, {nil, []byte("c")}} {
+	// Empty lists are no lists: still bare.
+	if err := Zip(&b, jlc, "main", fab, []byte{}, []byte{}); err != nil {
+		t.Errorf("empty lists: %v", err)
+	}
+	for _, c := range []struct{ bom, cpl []byte }{{[]byte("b"), nil}, {nil, []byte("c")}, {[]byte("b"), []byte{}}} {
 		if err := Zip(&b, jlc, "main", fab, c.bom, c.cpl); err == nil || !strings.Contains(err.Error(), "give both, or neither") {
 			t.Errorf("one list only: %v", err)
 		}

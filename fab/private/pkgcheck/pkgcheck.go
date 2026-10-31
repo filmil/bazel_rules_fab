@@ -172,6 +172,11 @@ func Check(vendor string, data []byte, bare bool) ([]string, error) {
 	case len(cpls) > 1:
 		add("two placement lists: %s", strings.Join(cpls, ", "))
 	}
+	if bare {
+		// The lists themselves are the problem; their contents are not
+		// checked.
+		boms, cpls = nil, nil
+	}
 	if len(boms) == 1 && len(cpls) == 1 &&
 		strings.TrimSuffix(boms[0], s.BOMSuffix) != strings.TrimSuffix(cpls[0], s.CPLSuffix) {
 		add("the BOM %s and the placement list %s name different boards", boms[0], cpls[0])

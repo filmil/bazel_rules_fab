@@ -95,7 +95,8 @@ no unit.
   `TB` (`T`, `B`), `Rotation`, `Comment` (the value). PCBWay's sample
   also has `Ref X/Y` and `Pad X/Y`; kicad_pos does not give them.
 
-`<board>` is `board_name`, or the last part of the target's name.
+`<board>` is `board_name`, or the last part of the target's name; a bare
+board has no CSV files for it to name.
 
 A bare board, one with no parts to place, leaves out `bom` and `pos`
 (both, or neither): its ZIP holds only the Gerber and drill files, which
@@ -140,7 +141,8 @@ default: hdlf_rules_fab ships no table yet.
             allow_files = [".csv"],
         ),
         "board_name": attr.string(
-            doc = "The board's name in the CSV files' names; the target's name if empty.",
+            doc = "The board's name in the CSV files' names; the target's name if empty. " +
+                  "A bare board's ZIP has no CSV files, so it has no effect there.",
         ),
         "rotations": attr.string_dict(
             doc = "Rotation corrections: footprint regular expression to degrees. Empty by " +
