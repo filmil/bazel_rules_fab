@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_swatch from a module that depends on rules_fab (issue #24): JLCPCB's
+# capability swatch passes DRC with JLCPCB's rules, and makes Gerbers and a
+# drill file, as for ordering it.
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_swatch")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_drill", "kicad_gerbers")
+
+fab_swatch(
+    name = "jlcpcb_swatch",
+    stackup = "2L-1oz",
+    vendor = "jlcpcb",
+)
+
+kicad_drc_test(
+    name = "jlcpcb_swatch_drc_test",
+    size = "small",
+    pcb = ":jlcpcb_swatch",
+)
+
+kicad_gerbers(
+    name = "jlcpcb_swatch_gerbers",
+    pcb = ":jlcpcb_swatch",
+)
+
+kicad_drill(
+    name = "jlcpcb_swatch_drill",
+    pcb = ":jlcpcb_swatch",
+)

@@ -262,6 +262,75 @@ determinism_test(
 | <a id="determinism_test-kwargs"></a>kwargs |  common test attributes, such as `size` and `tags`.   |  none |
 
 
+<a id="fab_swatch"></a>
+
+## fab_swatch
+
+<pre>
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_swatch")
+
+fab_swatch(<a href="#fab_swatch-name">name</a>, <a href="#fab_swatch-vendor">vendor</a>, <a href="#fab_swatch-stackup">stackup</a>, <a href="#fab_swatch-below">below</a>, <a href="#fab_swatch-kwargs">**kwargs</a>)
+</pre>
+
+A capability swatch: a credit-card board of a fab house's smallest features.
+
+```starlark
+fab_swatch(
+    name = "jlcpcb_swatch",
+    stackup = "2L-1oz",
+    vendor = "jlcpcb",
+)
+
+kicad_drc_test(
+    name = "jlcpcb_swatch_drc_test",
+    pcb = ":jlcpcb_swatch",
+)
+```
+
+The board is two-layer, 85.60 x 53.98 mm with corners of 3.18 mm
+(ISO/IEC 7810 ID-1). Its features start at the vendor's minimum and
+go up, each labelled on the silkscreen with its size in mm: track
+widths, track spacings, vias (drill and pad), plated holes (drill and
+pad), non-plated holes, gaps between SMD pads (the solder mask web),
+silkscreen text heights and line widths, and a track at the least
+distance from the board edge. Ordering one shows what the vendor
+makes.
+
+The numbers come from the vendor's design rules (`fab_rules` of the
+same vendor and stackup), so the board passes `kicad_drc_test` with
+them. `name` is a `kicad_pcb` with those rules, ready for
+`kicad_drc_test`, `kicad_gerbers`, `kicad_drill`, `kicad_render` and
+`fab_package`. `<name>_rules` is the `fab_rules`; `<name>_files`, the
+generated board, project and netlist, is private. The swatch has no
+parts, so it follows an empty netlist, and its project turns off the
+checks of dangling tracks and vias and of footprints that are in no
+library: a swatch connects nothing, and its footprints are drawn by
+the generator.
+
+`below` draws one feature at 80 % of the vendor's minimum: a known-bad
+board (spec T3) that fails DRC on that feature's rule and no other.
+`SWATCH_BELOW` maps each feature to the violation type it gives. For
+`via_annular`, the thin ring goes on the smallest via whose hole the
+vendor's extra-cost rule (a bigger pad for a small hole) does not
+cover, so that rule does not fire too.
+
+The generator checks that each exposed pad keeps the vendor's
+silkscreen clearance from its labels, and fails if a vendor's numbers
+make it too big for its row.
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="fab_swatch-name"></a>name |  the board's name.   |  none |
+| <a id="fab_swatch-vendor"></a>vendor |  the fab house: generic, jlcpcb or pcbway.   |  none |
+| <a id="fab_swatch-stackup"></a>stackup |  layers and outer copper weight: 2L-1oz, 4L-1oz, 4L-2oz or 6L-1oz. The board has two layers; the stackup picks the rules.   |  `"4L-1oz"` |
+| <a id="fab_swatch-below"></a>below |  empty, or a feature to draw under its minimum: edge, text_height, track_spacing, track_width, via_annular or via_hole.   |  `""` |
+| <a id="fab_swatch-kwargs"></a>kwargs |  common attributes, such as `visibility` and `tags`.   |  none |
+
+
 <a id="swap_test"></a>
 
 ## swap_test

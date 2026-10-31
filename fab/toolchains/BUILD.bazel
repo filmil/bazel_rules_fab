@@ -31,6 +31,7 @@ helpers_toolchain(
     packager = "//fab/private/packager:cmd",
     pkgcheck = "//fab/private/pkgcheck:cmd",
     swapcheck = "//fab/private/swapcheck",
+    swatch = "//fab/private/swatch:cmd",
 )
 
 # The helpers run on Linux x86_64 only in v1 (spec P1). The outputs of the

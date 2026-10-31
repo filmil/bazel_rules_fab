@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# The generator of fab_swatch (issue #24): a capability swatch board from
+# a vendor's KiCad design rules. Pure Go, built from source.
+go_library(
+    name = "swatch",
+    srcs = [
+        "board.go",
+        "rules.go",
+    ],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/swatch",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "swatch_test",
+    size = "small",
+    srcs = ["swatch_test.go"],
+    args = [
+        "--jlcpcb=$(rlocationpath @kicad_druid//:JLCPCB/JLCPCB.kicad_dru)",
+        "--pcbway=$(rlocationpath @kicad_druid//:PCBWay/PCBWay.kicad_dru)",
+    ],
+    data = [
+        "@kicad_druid//:JLCPCB/JLCPCB.kicad_dru",
+        "@kicad_druid//:PCBWay/PCBWay.kicad_dru",
+    ],
+    embed = [":swatch"],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+go_binary(
+    name = "cmd",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//fab/toolchains:__pkg__"],
+    deps = [":swatch"],
+)
+
+go_test(
+    name = "cmd_test",
+    size = "small",
+    srcs = [
+        "cmd/main.go",
+        "cmd/main_test.go",
+    ],
+    pure = "on",
+    deps = [":swatch"],
+)

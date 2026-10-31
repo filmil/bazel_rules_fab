@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_swatch (issue #24): each vendor's capability swatch, for every
+# stackup, passes DRC with its own rules (the canary shows they loaded); each known-bad swatch, one
+# feature under the minimum, fails on that feature's rule and no other;
+# the files repeat byte for byte and make Gerbers. (No swap_test: the
+# generator is this module's own Go, built from source in the helpers
+# toolchain, like fab_package's packager.)
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_gerbers")
+load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
+
+# The swatches: one line per vendor and stackup.
+[
+    [
+        fab_swatch(
+            name = name,
+            stackup = stackup,
+            vendor = vendor,
+        ),
+        kicad_drc_test(
+            name = name + "_drc_test",
+            size = "small",
+            pcb = ":" + name,
+        ),
+        determinism_test(
+            name = name + "_determinism_test",
+            size = "small",
+            target = ":" + name + "_files",
+        ),
+        kicad_gerbers(
+            name = name + "_gerbers",
+            pcb = ":" + name,
+        ),
+    ]
+    for name, vendor, stackup in [
+        (
+            "%s_%s" % (
+                vendor,
+                stackup.replace("-", "_"),
+            ),
+            vendor,
+            stackup,
+        )
+        for vendor in [
+            "generic",
+            "jlcpcb",
+            "pcbway",
+        ]
+        for stackup in [
+            "2L-1oz",
+            "4L-1oz",
+            "4L-2oz",
+            "6L-1oz",
+        ]
+    ]
+]
+
+# Known bad (spec T3): each feature a step under the vendor's minimum.
+[
+    [
+        fab_swatch(
+            name = "%s_below_%s" % (vendor, feature),
+            below = feature,
+            stackup = "2L-1oz",
+            vendor = vendor,
+        ),
+        kicad_drc_test(
+            name = "%s_below_%s_drc_test" % (vendor, feature),
+            size = "small",
+            expect = violation,
+            pcb = ":%s_below_%s" % (vendor, feature),
+        ),
+    ]
+    for vendor in [
+        "generic",
+        "jlcpcb",
+        "pcbway",
+    ]
+    for feature, violation in SWATCH_BELOW.items()
+]
