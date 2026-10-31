@@ -83,8 +83,10 @@ var optional = regexp.MustCompile(`^\.(gtp|gbp|g([1-9]|[12][0-9]|30))$`)
 var mmValue = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?mm$`)
 
 // Check checks the ZIP's bytes against the vendor's spec. It returns every
-// problem it finds, sorted; none when the ZIP is good.
-func Check(vendor string, data []byte) ([]string, error) {
+// problem it finds, sorted; none when the ZIP is good. A bare board's ZIP
+// (bare) must have no BOM and no placement list; any other must have one
+// of each.
+func Check(vendor string, data []byte, bare bool) ([]string, error) {
 	s, ok := Specs[vendor]
 	if !ok {
 		var names []string
@@ -153,19 +155,27 @@ func Check(vendor string, data []byte) ([]string, error) {
 			add("two files of %s: %s", r.what, strings.Join(n, ", "))
 		}
 	}
-	switch len(boms) {
-	case 0:
+	switch {
+	case bare:
+		for _, n := range append(append([]string{}, boms...), cpls...) {
+			add("%s: a bare board's ZIP has no BOM or placement list", n)
+		}
+	case len(boms) == 0:
 		add("no BOM (*%s)", s.BOMSuffix)
-	case 1:
-	default:
+	case len(boms) > 1:
 		add("two BOMs: %s", strings.Join(boms, ", "))
 	}
-	switch len(cpls) {
-	case 0:
+	switch {
+	case bare:
+	case len(cpls) == 0:
 		add("no placement list (*%s)", s.CPLSuffix)
-	case 1:
-	default:
+	case len(cpls) > 1:
 		add("two placement lists: %s", strings.Join(cpls, ", "))
+	}
+	if bare {
+		// The lists themselves are the problem; their contents are not
+		// checked.
+		boms, cpls = nil, nil
 	}
 	if len(boms) == 1 && len(cpls) == 1 &&
 		strings.TrimSuffix(boms[0], s.BOMSuffix) != strings.TrimSuffix(cpls[0], s.CPLSuffix) {

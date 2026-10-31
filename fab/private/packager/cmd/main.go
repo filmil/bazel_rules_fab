@@ -2,9 +2,12 @@
 
 // Command packager writes a fab house's ZIP for a board (issue #9):
 //
-//	packager --vendor jlcpcb --board NAME --bom BOM.csv --pos POS.csv \
+//	packager --vendor jlcpcb --board NAME [--bom BOM.csv --pos POS.csv] \
 //	         --fab DIR_OR_FILE... [--rotation FOOTPRINT_REGEXP=DEGREES]... \
 //	         --out OUT.zip
+//
+// Without --bom and --pos, the board is bare: the ZIP holds only the fab
+// files.
 //
 // --fab names the Gerber and drill files, or directories of them (the
 // outputs of kicad_gerbers and kicad_drill), walked in name order.
@@ -70,8 +73,14 @@ func run() error {
 	if !ok {
 		return fmt.Errorf("--vendor %q: want one of %s", *vendor, strings.Join(vendors(), ", "))
 	}
-	if *board == "" || *bomPath == "" || *posPath == "" || *out == "" || len(fab) == 0 {
-		return fmt.Errorf("--board, --bom, --pos, --fab and --out are all needed")
+	if *board == "" || *out == "" || len(fab) == 0 {
+		return fmt.Errorf("--board, --fab and --out are needed")
+	}
+	if (*bomPath == "") != (*posPath == "") {
+		return fmt.Errorf("--bom goes with --pos: give both, or neither for a bare board")
+	}
+	if *bomPath == "" && len(rots) > 0 {
+		return fmt.Errorf("--rotation corrects the placement list; a bare board has none")
 	}
 	var rotations []packager.Rotation
 	for _, r := range rots {
@@ -81,21 +90,22 @@ func run() error {
 		}
 		rotations = append(rotations, rot)
 	}
-	bomIn, err := os.ReadFile(*bomPath)
-	if err != nil {
-		return err
-	}
-	posIn, err := os.ReadFile(*posPath)
-	if err != nil {
-		return err
-	}
-	bom, err := packager.BOM(l, bomIn)
-	if err != nil {
-		return err
-	}
-	cpl, err := packager.CPL(l, posIn, rotations)
-	if err != nil {
-		return err
+	var bom, cpl []byte
+	if *bomPath != "" {
+		bomIn, err := os.ReadFile(*bomPath)
+		if err != nil {
+			return err
+		}
+		posIn, err := os.ReadFile(*posPath)
+		if err != nil {
+			return err
+		}
+		if bom, err = packager.BOM(l, bomIn); err != nil {
+			return err
+		}
+		if cpl, err = packager.CPL(l, posIn, rotations); err != nil {
+			return err
+		}
 	}
 	files, err := readFab(fab)
 	if err != nil {

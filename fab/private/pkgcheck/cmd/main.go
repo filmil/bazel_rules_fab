@@ -6,7 +6,8 @@
 //   - PKG_ZIP: the ZIP, relative to the runfiles directory;
 //   - PKG_VENDOR: the vendor;
 //   - PKG_WANT_ERROR: empty for a good ZIP; else text that one of the
-//     problems must contain (a known-bad ZIP).
+//     problems must contain (a known-bad ZIP);
+//   - PKG_BARE: "1" for a bare board's ZIP, with no BOM or placement list.
 package main
 
 import (
@@ -21,7 +22,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	problems, err := pkgcheck.Check(os.Getenv("PKG_VENDOR"), data)
+	problems, err := pkgcheck.Check(os.Getenv("PKG_VENDOR"), data, os.Getenv("PKG_BARE") == "1")
 	if err != nil {
 		return err
 	}

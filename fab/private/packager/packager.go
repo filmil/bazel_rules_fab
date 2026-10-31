@@ -319,12 +319,19 @@ func fabFile(name string) bool {
 }
 
 // Zip writes the vendor's ZIP of the fab files and the two CSVs. File
-// names use "/" as the separator.
+// names use "/" as the separator. A bare board has no parts: bom and cpl
+// are then both empty (or nil), and the ZIP holds only the fab files.
 func Zip(w io.Writer, l Layout, board string, fab []File, bom, cpl []byte) error {
 	if board == "" || strings.ContainsAny(board, `/\`) {
 		return fmt.Errorf("board name %q: want a plain file name", board)
 	}
-	files := []File{{l.BOMName(board), bom}, {l.CPLName(board), cpl}}
+	if (len(bom) == 0) != (len(cpl) == 0) {
+		return fmt.Errorf("a BOM goes with a placement list: give both, or neither for a bare board")
+	}
+	var files []File
+	if len(bom) > 0 {
+		files = append(files, File{l.BOMName(board), bom}, File{l.CPLName(board), cpl})
+	}
 	n := 0
 	for _, f := range fab {
 		if fabFile(f.Name) {

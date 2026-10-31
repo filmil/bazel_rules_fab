@@ -13,8 +13,14 @@ def _single_csv(ctx, attr):
     return files[0]
 
 def _fab_package_impl(ctx):
-    bom = _single_csv(ctx, "bom")
-    pos = _single_csv(ctx, "pos")
+    # A bare board has no parts: no BOM and no positions.
+    bare = not ctx.attr.bom and not ctx.attr.pos
+    if not bare and not (ctx.attr.bom and ctx.attr.pos):
+        fail("%s: bom goes with pos: give both, or neither for a bare board" % ctx.label)
+    if bare and ctx.attr.rotations:
+        fail("%s: rotations correct the placement list; a bare board has none" % ctx.label)
+    bom = None if bare else _single_csv(ctx, "bom")
+    pos = None if bare else _single_csv(ctx, "pos")
     for attr in ["gerbers", "drill"]:
         if not getattr(ctx.files, attr):
             fail("%s: %s gives no files" % (ctx.label, attr))
@@ -26,8 +32,9 @@ def _fab_package_impl(ctx):
     args = ctx.actions.args()
     args.add("--vendor", ctx.attr.vendor)
     args.add("--board", board)
-    args.add("--bom", bom)
-    args.add("--pos", pos)
+    if not bare:
+        args.add("--bom", bom)
+        args.add("--pos", pos)
     args.add("--out", out)
     for f in fab:
         args.add("--fab", f.path)
@@ -40,7 +47,7 @@ def _fab_package_impl(ctx):
         HELPERS_TOOLCHAIN_TYPE,
         "packager",
         arguments = [args],
-        inputs = fab + [bom, pos],
+        inputs = fab + ([] if bare else [bom, pos]),
         outputs = [out],
         mnemonic = "FabPackage",
         progress_message = "Packaging %{label} for " + ctx.attr.vendor,
@@ -88,7 +95,13 @@ no unit.
   `TB` (`T`, `B`), `Rotation`, `Comment` (the value). PCBWay's sample
   also has `Ref X/Y` and `Pad X/Y`; kicad_pos does not give them.
 
-`<board>` is `board_name`, or the last part of the target's name.
+`<board>` is `board_name`, or the last part of the target's name; a bare
+board has no CSV files for it to name.
+
+A bare board, one with no parts to place, leaves out `bom` and `pos`
+(both, or neither): its ZIP holds only the Gerber and drill files, which
+is what both vendors take for a board without assembly. Check it with
+`fab_package_test(bare = True)`.
 
 Its entries are sorted by name, dated 1980-01-01 and mode 0644, so the
 same board gives the same bytes.
@@ -118,18 +131,18 @@ default: hdlf_rules_fab ships no table yet.
         ),
         "bom": attr.label(
             doc = "The bill of materials (`kicad_bom`): a CSV with the columns Refs, Value, " +
-                  "Footprint, and DNP and LCSC when present.",
-            mandatory = True,
+                  "Footprint, and DNP and LCSC when present. Leave it and `pos` out for a " +
+                  "bare board.",
             allow_files = [".csv"],
         ),
         "pos": attr.label(
             doc = "The positions (`kicad_pos`): a CSV with the columns Ref, Val, Package, " +
-                  "PosX, PosY, Rot and Side, in mm.",
-            mandatory = True,
+                  "PosX, PosY, Rot and Side, in mm. Leave it and `bom` out for a bare board.",
             allow_files = [".csv"],
         ),
         "board_name": attr.string(
-            doc = "The board's name in the CSV files' names; the target's name if empty.",
+            doc = "The board's name in the CSV files' names; the target's name if empty. " +
+                  "A bare board's ZIP has no CSV files, so it has no effect there.",
         ),
         "rotations": attr.string_dict(
             doc = "Rotation corrections: footprint regular expression to degrees. Empty by " +

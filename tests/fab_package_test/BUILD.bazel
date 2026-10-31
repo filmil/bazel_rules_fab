@@ -4,6 +4,7 @@
 # vendor, and known-bad ZIPs fail (T3): one missing a layer, and one
 # checked against the other vendor's columns and file names.
 load("//fab:defs.bzl", "fab_package", "fab_package_test")
+load("//tests/fab_rules:fails_test.bzl", "fails_test")
 
 # One line per good ZIP: name, package, vendor.
 [
@@ -53,4 +54,98 @@ fab_package_test(
     package = "//tests/fab_package:jlcpcb",
     vendor = "pcbway",
     want_error = "no placement list (*_centroid.csv)",
+)
+
+# A bare board: the fixture's Gerbers and drill file, no BOM or placement
+# list, for each vendor.
+[
+    [
+        fab_package(
+            name = "bare_" + vendor,
+            board_name = "main",
+            drill = "//tests/fab_package:board/drill/main.drl",
+            gerbers = "//tests/fab_package:gerbers",
+            vendor = vendor,
+        ),
+        fab_package_test(
+            name = "bare_%s_test" % vendor,
+            size = "small",
+            bare = True,
+            package = ":bare_" + vendor,
+            vendor = vendor,
+        ),
+    ]
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+]
+
+# Known bad: a bare ZIP checked as one with parts lacks both lists...
+fab_package_test(
+    name = "bare_as_full_test",
+    size = "small",
+    package = ":bare_jlcpcb",
+    vendor = "jlcpcb",
+    want_error = "no BOM (*_bom.csv)",
+)
+
+# ...and a ZIP with parts checked as bare has lists it should not.
+fab_package_test(
+    name = "full_as_bare_test",
+    size = "small",
+    bare = True,
+    package = "//tests/fab_package:jlcpcb",
+    vendor = "jlcpcb",
+    want_error = "main_bom.csv: a bare board's ZIP has no BOM or placement list",
+)
+
+# A BOM without positions, positions without a BOM, and rotations without
+# either, fail analysis.
+fab_package(
+    name = "bom_only",
+    bom = "//tests/fab_package:board/bom.csv",
+    drill = "//tests/fab_package:board/drill/main.drl",
+    gerbers = "//tests/fab_package:gerbers",
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "bom_only_test",
+    size = "small",
+    message = "bom goes with pos: give both, or neither for a bare board",
+    target_under_test = ":bom_only",
+)
+
+fab_package(
+    name = "pos_only",
+    drill = "//tests/fab_package:board/drill/main.drl",
+    gerbers = "//tests/fab_package:gerbers",
+    pos = "//tests/fab_package:board/pos.csv",
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "pos_only_test",
+    size = "small",
+    message = "bom goes with pos: give both, or neither for a bare board",
+    target_under_test = ":pos_only",
+)
+
+fab_package(
+    name = "bare_rotated",
+    drill = "//tests/fab_package:board/drill/main.drl",
+    gerbers = "//tests/fab_package:gerbers",
+    rotations = {".*": "90"},
+    tags = ["manual"],
+    vendor = "jlcpcb",
+)
+
+fails_test(
+    name = "bare_rotated_test",
+    size = "small",
+    message = "a bare board has none",
+    target_under_test = ":bare_rotated",
 )
