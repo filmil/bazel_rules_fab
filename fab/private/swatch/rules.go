@@ -31,7 +31,6 @@ type Caps struct {
 	NPTHHole   float64 // the smallest non-plated hole
 
 	PadSpacing float64 // the smallest gap between two SMD pads of two nets
-	SMDPad     float64 // the smallest SMD pad side; zero when the rules have none
 
 	TextHeight    float64 // the smallest silkscreen text
 	TextThickness float64 // the thinnest silkscreen text stroke
@@ -44,15 +43,12 @@ var (
 	constraintRe = regexp.MustCompile(`^\(constraint (\w+)(.*)\)$`)
 	minRe        = regexp.MustCompile(`\(min ([0-9.]+)mm\)`)
 	holeBelowRe  = regexp.MustCompile(`A\.Hole < ([0-9.]+)mm`)
-	sizeAtLeast  = regexp.MustCompile(`A\.Size_X >= ([0-9.]+)mm`)
 )
 
 type rule struct {
 	name, condition string
-	// min holds each constraint's minimum by constraint type; assertion
-	// holds an assertion's expression.
-	min       map[string]float64
-	assertion string
+	// min holds each constraint's minimum by constraint type.
+	min map[string]float64
 }
 
 func parseRules(text string) ([]rule, error) {
@@ -75,10 +71,6 @@ func parseRules(text string) ([]rule, error) {
 			continue
 		}
 		if m := constraintRe.FindStringSubmatch(line); m != nil {
-			if m[1] == "assertion" {
-				r.assertion = m[2]
-				continue
-			}
 			if mm := minRe.FindStringSubmatch(m[2]); mm != nil {
 				v, err := strconv.ParseFloat(mm[1], 64)
 				if err != nil {
@@ -92,6 +84,10 @@ func parseRules(text string) ([]rule, error) {
 }
 
 // ParseCaps reads a fab house's capabilities from its design rules.
+//
+// It reads kicad-druid's files, which write each rule's name, condition
+// and constraints one to a line; a rule name that appears twice is an
+// error, so no rule is silently overwritten.
 func ParseCaps(text string) (Caps, error) {
 	rules, err := parseRules(text)
 	if err != nil {
@@ -106,6 +102,11 @@ func ParseCaps(text string) (Caps, error) {
 		}
 		if c.Vendor == "" {
 			c.Vendor = vendor
+		} else if vendor != c.Vendor {
+			return c, fmt.Errorf("rule %q: the vendor %q differs from %q", r.name, vendor, c.Vendor)
+		}
+		if _, dup := byName[short]; dup {
+			return c, fmt.Errorf("rule %q appears twice", r.name)
 		}
 		byName[short] = r
 		if v, ok := r.min["via_diameter"]; ok {
@@ -144,11 +145,6 @@ func ParseCaps(text string) (Caps, error) {
 	need(&c.SilkClear, "silk_clearance", "Pad to Silkscreen")
 	if len(missing) > 0 {
 		return c, fmt.Errorf("the %s rules lack %s", c.Vendor, strings.Join(missing, ", "))
-	}
-	if r, ok := byName["SMD Pad Size"]; ok {
-		if m := sizeAtLeast.FindStringSubmatch(r.assertion); m != nil {
-			c.SMDPad, _ = strconv.ParseFloat(m[1], 64)
-		}
 	}
 	return c, nil
 }

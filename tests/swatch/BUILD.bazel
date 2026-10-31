@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# fab_swatch (issue #24): each vendor's capability swatch passes DRC with
-# its own rules (the canary shows they loaded); each known-bad swatch, one
+# fab_swatch (issue #24): each vendor's capability swatch, for every
+# stackup, passes DRC with its own rules (the canary shows they loaded); each known-bad swatch, one
 # feature under the minimum, fails on that feature's rule and no other;
 # the files repeat byte for byte and make Gerbers. (No swap_test: the
 # generator is this module's own Go, built from source in the helpers
@@ -33,9 +33,25 @@ load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
         ),
     ]
     for name, vendor, stackup in [
-        ("jlcpcb", "jlcpcb", "2L-1oz"),
-        ("pcbway", "pcbway", "2L-1oz"),
-        ("generic", "generic", "4L-1oz"),
+        (
+            "%s_%s" % (
+                vendor,
+                stackup.replace("-", "_"),
+            ),
+            vendor,
+            stackup,
+        )
+        for vendor in [
+            "generic",
+            "jlcpcb",
+            "pcbway",
+        ]
+        for stackup in [
+            "2L-1oz",
+            "4L-1oz",
+            "4L-2oz",
+            "6L-1oz",
+        ]
     ]
 ]
 
@@ -56,6 +72,7 @@ load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
         ),
     ]
     for vendor in [
+        "generic",
         "jlcpcb",
         "pcbway",
     ]

@@ -38,7 +38,7 @@ func TestParseCaps(t *testing.T) {
 		{*jlcpcb, Caps{
 			Vendor: "JLCPCB", TrackWidth: 0.09, TrackSpacing: 0.09, EdgeClear: 0.2,
 			ViaHole: 0.15, ViaAnnular: 0.05, SmallViaHole: 0.3, SmallViaPad: 0.45,
-			PTHHole: 0.15, PTHAnnular: 0.15, NPTHHole: 0.5, PadSpacing: 0.15, SMDPad: 0.125,
+			PTHHole: 0.15, PTHAnnular: 0.15, NPTHHole: 0.5, PadSpacing: 0.15,
 			TextHeight: 1, TextThickness: 0.15, SilkClear: 0.15,
 		}},
 		{*pcbway, Caps{
@@ -67,6 +67,13 @@ func TestParseCapsMissing(t *testing.T) {
 	if _, err := ParseCaps("(version 1)\n"); err == nil {
 		t.Error("rules without a vendor: want an error")
 	}
+	twice := "(rule \"X: Trace Width\"\n\t(constraint track_width (min 0.1mm))\n)\n"
+	if _, err := ParseCaps(twice + twice); err == nil || !strings.Contains(err.Error(), "appears twice") {
+		t.Errorf("a rule twice: %v", err)
+	}
+	if _, err := ParseCaps(twice + strings.Replace(twice, "X: Trace Width", "Y: Trace Spacing", 1)); err == nil || !strings.Contains(err.Error(), "differs") {
+		t.Errorf("two vendors: %v", err)
+	}
 }
 
 func TestViaPad(t *testing.T) {
@@ -88,8 +95,10 @@ func TestLadderAndLabels(t *testing.T) {
 			t.Errorf("label(%v) = %q, want %q", v, got, want)
 		}
 	}
-	if got := under(0.1); got != 0.08 {
-		t.Errorf("under(0.1) = %v", got)
+	for v, want := range map[float64]float64{0.1: 0.08, 0.09: 0.072, 0.127: 0.1016, 0.01: 0.008} {
+		if got := under(v); got != want {
+			t.Errorf("under(%v) = %v, want %v", v, got, want)
+		}
 	}
 }
 
@@ -133,6 +142,21 @@ func TestBoard(t *testing.T) {
 	}
 	if _, err := Board(caps, Options{Below: "colour"}); err == nil || !strings.Contains(err.Error(), "want one of edge,") {
 		t.Errorf("unknown feature: %v", err)
+	}
+	// The thin ring goes on the 0.30 via, the first that JLCPCB's
+	// extra-cost rule does not cover; the drills stay in order.
+	ring, _ := Board(caps, Options{Below: "via_annular"})
+	if !strings.Contains(ring, "(size 0.38)\n\t\t(drill 0.3)") {
+		t.Error("below via_annular: no 0.30 via with a 0.04 ring")
+	}
+	if strings.Count(ring, "(drill 0.3)\n\t\t(layers \"F.Cu\" \"B.Cu\")") != 1 {
+		t.Error("below via_annular: the 0.30 via is not there once")
+	}
+	// A vendor whose plated hole pads are too big for their row.
+	fat := caps
+	fat.PTHAnnular = 1.5
+	if _, err := Board(fat, Options{}); err == nil || !strings.Contains(err.Error(), "silkscreen clearance") {
+		t.Errorf("pads too big: %v", err)
 	}
 }
 

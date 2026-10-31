@@ -37,3 +37,14 @@ go_binary(
     visibility = ["//fab/toolchains:__pkg__"],
     deps = [":swatch"],
 )
+
+go_test(
+    name = "cmd_test",
+    size = "small",
+    srcs = [
+        "cmd/main.go",
+        "cmd/main_test.go",
+    ],
+    pure = "on",
+    deps = [":swatch"],
+)

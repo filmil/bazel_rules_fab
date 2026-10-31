@@ -87,15 +87,23 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
     same vendor and stackup), so the board passes `kicad_drc_test` with
     them. `name` is a `kicad_pcb` with those rules, ready for
     `kicad_drc_test`, `kicad_gerbers`, `kicad_drill`, `kicad_render` and
-    `fab_package`. `<name>_rules` is the `fab_rules`. The swatch has no
+    `fab_package`. `<name>_rules` is the `fab_rules`; `<name>_files`, the
+    generated board, project and netlist, is private. The swatch has no
     parts, so it follows an empty netlist, and its project turns off the
     checks of dangling tracks and vias and of footprints that are in no
     library: a swatch connects nothing, and its footprints are drawn by
     the generator.
 
-    `below` draws one feature a step (80 %) under the vendor's minimum: a
-    known-bad board (spec T3) that fails DRC on that feature's rule.
-    `SWATCH_BELOW` maps each feature to the violation type it gives.
+    `below` draws one feature at 80 % of the vendor's minimum: a known-bad
+    board (spec T3) that fails DRC on that feature's rule and no other.
+    `SWATCH_BELOW` maps each feature to the violation type it gives. For
+    `via_annular`, the thin ring goes on the smallest via whose hole the
+    vendor's extra-cost rule (a bigger pad for a small hole) does not
+    cover, so that rule does not fire too.
+
+    The generator checks that each exposed pad keeps the vendor's
+    silkscreen clearance from its labels, and fails if a vendor's numbers
+    make it too big for its row.
 
     Args:
       name: the board's name.
@@ -110,6 +118,10 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
         fail("fab_swatch %s: vendor %r: want one of %s" % (name, vendor, sorted(FAB_VENDORS.keys())))
     if stackup not in FAB_STACKUPS:
         fail("fab_swatch %s: stackup %r: want one of %s" % (name, stackup, FAB_STACKUPS))
+
+    # The generated files are an implementation detail: private, whatever
+    # the board's visibility.
+    inner = {k: v for k, v in kwargs.items() if k != "visibility"}
     fab_rules(
         name = name + "_rules",
         stackup = stackup,
@@ -124,7 +136,8 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
         project = name + ".kicad_pro",
         rules = ":" + name + "_rules",
         stackup = stackup,
-        **kwargs
+        visibility = ["//visibility:private"],
+        **inner
     )
     kicad_pcb(
         name = name,

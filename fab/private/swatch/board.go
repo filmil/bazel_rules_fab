@@ -65,8 +65,8 @@ func label(v float64) string {
 	return s
 }
 
-// under is a step under a minimum: 80 % of it, in hundredths of a mm.
-func under(v float64) float64 { return math.Floor(v*0.8*100) / 100 }
+// under is a step under a minimum: 80 % of it.
+func under(v float64) float64 { return round(v * 0.8) }
 
 // ladder is the minimum, then each step above it, at most n values.
 func ladder(min float64, steps []float64, n int) []float64 {
@@ -167,6 +167,25 @@ func (bd *board) pad(ref, kind string, x, y, w, h, hole float64) {
 		attr, kind, shape, num(w), num(h), drill, layers, net, bd.uuid())
 }
 
+// fits checks that an exposed pad of size `size`, centered at y, keeps
+// the vendor's silkscreen clearance from the labels centered at above
+// and below (0: none). A label's ink reaches half its height plus half
+// its stroke from its center.
+func fits(c Caps, what string, size, y, above, below float64) error {
+	ink := labelSize/2 + labelThick/2
+	gaps := []float64{(y - size/2) - (above + ink)}
+	if below > 0 {
+		gaps = append(gaps, (below-ink)-(y+size/2))
+	}
+	for _, g := range gaps {
+		if g < c.SilkClear {
+			return fmt.Errorf("%s of %s mm comes %s mm from its label, under the %s silkscreen clearance %s mm",
+				what, num(size), num(g), c.Vendor, num(c.SilkClear))
+		}
+	}
+	return nil
+}
+
 func (bd *board) outline() {
 	r := CardRadius
 	k := r * (1 - math.Sqrt2/2) // a corner arc's middle, from the corner
@@ -241,20 +260,22 @@ func Board(c Caps, o Options) (string, error) {
 
 	// Vias: drill above, pad below.
 	bd.heading("VIA (drill, pad)", 4, 20.2)
-	for i, h := range ladder(c.ViaHole, []float64{0.2, 0.25, 0.3, 0.4, 0.5, 0.6}, 7) {
+	vias := ladder(c.ViaHole, []float64{0.2, 0.25, 0.3, 0.4, 0.5, 0.6}, 7)
+	// A thin ring goes on the first via that the extra-cost rule (a
+	// bigger pad for a small hole) does not cover, so only the ring rule
+	// fires.
+	thin := 0
+	for thin < len(vias)-1 && c.SmallViaPad > 0 && vias[thin] < c.SmallViaHole {
+		thin++
+	}
+	for i, h := range vias {
 		x := 5.5 + float64(i)*5.5
 		pad := c.ViaPad(h)
 		if i == 0 {
 			h = low("via_hole", h)
-			if o.Below == "via_annular" {
-				pad = round(h + 2*under(c.ViaAnnular))
-				if c.SmallViaPad > 0 && h < c.SmallViaHole {
-					// The extra-cost rule would also fire; take a hole
-					// that it does not cover.
-					h = c.SmallViaHole
-					pad = round(h + 2*under(c.ViaAnnular))
-				}
-			}
+		}
+		if i == thin && o.Below == "via_annular" {
+			pad = round(h + 2*under(c.ViaAnnular))
 		}
 		bd.label(label(h), x, 22.2)
 		bd.via(x, 24.6, pad, h)
@@ -266,6 +287,9 @@ func Board(c Caps, o Options) (string, error) {
 	for i, h := range ladder(c.PTHHole, []float64{0.3, 0.5, 0.8, 1.0, 1.2}, 6) {
 		x := 49 + float64(i)*6
 		pad := round(h + 2*c.PTHAnnular)
+		if err := fits(c, "a plated hole's pad", pad, 24.6, 22.2, 27); err != nil {
+			return "", err
+		}
 		bd.label(label(h), x, 22.2)
 		bd.pad(fmt.Sprintf("H%d", i+1), "thru_hole", x, 24.6, pad, pad, h)
 		bd.label(label(pad), x, 27)
@@ -285,6 +309,9 @@ func Board(c Caps, o Options) (string, error) {
 	for i, g := range ladder(c.PadSpacing, []float64{0.2, 0.25, 0.3, 0.4, 0.5}, 6) {
 		x := 49 + float64(i)*6
 		d := (g + 0.6) / 2
+		if err := fits(c, "an SMD pad", 1.2, 35.4, 32.2, 0); err != nil {
+			return "", err
+		}
 		bd.label(label(g), x, 32.2)
 		bd.pad(fmt.Sprintf("P%da", i+1), "smd", x-d, 35.4, 0.6, 1.2, 0)
 		bd.pad(fmt.Sprintf("P%db", i+1), "smd", x+d, 35.4, 0.6, 1.2, 0)

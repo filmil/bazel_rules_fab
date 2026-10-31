@@ -300,15 +300,23 @@ The numbers come from the vendor's design rules (`fab_rules` of the
 same vendor and stackup), so the board passes `kicad_drc_test` with
 them. `name` is a `kicad_pcb` with those rules, ready for
 `kicad_drc_test`, `kicad_gerbers`, `kicad_drill`, `kicad_render` and
-`fab_package`. `<name>_rules` is the `fab_rules`. The swatch has no
+`fab_package`. `<name>_rules` is the `fab_rules`; `<name>_files`, the
+generated board, project and netlist, is private. The swatch has no
 parts, so it follows an empty netlist, and its project turns off the
 checks of dangling tracks and vias and of footprints that are in no
 library: a swatch connects nothing, and its footprints are drawn by
 the generator.
 
-`below` draws one feature a step (80 %) under the vendor's minimum: a
-known-bad board (spec T3) that fails DRC on that feature's rule.
-`SWATCH_BELOW` maps each feature to the violation type it gives.
+`below` draws one feature at 80 % of the vendor's minimum: a known-bad
+board (spec T3) that fails DRC on that feature's rule and no other.
+`SWATCH_BELOW` maps each feature to the violation type it gives. For
+`via_annular`, the thin ring goes on the smallest via whose hole the
+vendor's extra-cost rule (a bigger pad for a small hole) does not
+cover, so that rule does not fire too.
+
+The generator checks that each exposed pad keeps the vendor's
+silkscreen clearance from its labels, and fails if a vendor's numbers
+make it too big for its row.
 
 
 **PARAMETERS**
