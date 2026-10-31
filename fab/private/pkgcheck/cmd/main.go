@@ -7,12 +7,15 @@
 //   - PKG_VENDOR: the vendor;
 //   - PKG_WANT_ERROR: empty for a good ZIP; else text that one of the
 //     problems must contain (a known-bad ZIP);
-//   - PKG_BARE: "1" for a bare board's ZIP, with no BOM or placement list.
+//   - PKG_BARE: "1" for a bare board's ZIP, with no BOM or placement list;
+//   - PKG_COPPER_LAYERS: the board's number of copper layers, to check
+//     its inner layers' Gerbers; empty not to.
 package main
 
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/filmil/bazel_rules_fab/fab/private/pkgcheck"
 )
@@ -25,6 +28,17 @@ func run() error {
 	problems, err := pkgcheck.Check(os.Getenv("PKG_VENDOR"), data, os.Getenv("PKG_BARE") == "1")
 	if err != nil {
 		return err
+	}
+	if n := os.Getenv("PKG_COPPER_LAYERS"); n != "" {
+		copper, err := strconv.Atoi(n)
+		if err != nil {
+			return fmt.Errorf("PKG_COPPER_LAYERS %q: %v", n, err)
+		}
+		inner, err := pkgcheck.CheckCopperLayers(data, copper)
+		if err != nil {
+			return err
+		}
+		problems = append(problems, inner...)
 	}
 	for _, p := range problems {
 		fmt.Println(p)

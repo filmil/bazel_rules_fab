@@ -9,6 +9,9 @@ load(":run_tool.bzl", "HELPERS_TOOLCHAIN_TYPE", "RUN_TOOL_TOOLCHAINS", "run_tool
 # DRC violation type each then gives (the generator's swatch.Features).
 SWATCH_BELOW = {
     "edge": "copper_edge_clearance",
+    # Inner tracks: only with a stackup of 4 layers or more (issue #35).
+    "inner_track_spacing": "clearance",
+    "inner_track_width": "track_width",
     "text_height": "text_height",
     "track_spacing": "clearance",
     "track_width": "track_width",
@@ -74,8 +77,12 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
     )
     ```
 
-    The board is two-layer, 85.60 x 53.98 mm with corners of 3.18 mm
-    (ISO/IEC 7810 ID-1). Its features start at the vendor's minimum and
+    The board is 85.60 x 53.98 mm with corners of 3.18 mm (ISO/IEC 7810
+    ID-1), with the stackup's copper layers: a 4L or 6L board has In1.Cu
+    to In2.Cu or In4.Cu, and ladders of the inner track width and spacing
+    on In1.Cu, labelled on the silkscreen above them (issue #35); the
+    vendors' inner rules can differ from the outer ones. Vias are through
+    vias: no vendor's rules list blind, buried or plugged ones. Its features start at the vendor's minimum and
     go up, each labelled on the silkscreen with its size in mm: track
     widths, track spacings, vias (drill and pad), plated holes (drill and
     pad), non-plated holes, gaps between SMD pads (the solder mask web),
@@ -109,8 +116,9 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
       name: the board's name.
       vendor: the fab house: generic, jlcpcb or pcbway.
       stackup: layers and outer copper weight: 2L-1oz, 4L-1oz, 4L-2oz or
-        6L-1oz. The board has two layers; the stackup picks the rules.
+        6L-1oz. It picks the rules and the board's copper layers.
       below: empty, or a feature to draw under its minimum: edge,
+        inner_track_spacing or inner_track_width (4 layers or more),
         text_height, track_spacing, track_width, via_annular or via_hole.
       **kwargs: common attributes, such as `visibility` and `tags`.
     """
@@ -118,6 +126,8 @@ def fab_swatch(name, vendor, stackup = "4L-1oz", below = "", **kwargs):
         fail("fab_swatch %s: vendor %r: want one of %s" % (name, vendor, sorted(FAB_VENDORS.keys())))
     if stackup not in FAB_STACKUPS:
         fail("fab_swatch %s: stackup %r: want one of %s" % (name, stackup, FAB_STACKUPS))
+    if below.startswith("inner_") and stackup.startswith("2L"):
+        fail("fab_swatch %s: below = %r needs a stackup of 4 layers or more, not %r" % (name, below, stackup))
 
     # The generated files are an implementation detail: private, whatever
     # the board's visibility.

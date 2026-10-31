@@ -101,7 +101,7 @@ default: hdlf_rules_fab ships no table yet.
 <pre>
 load("@hdlf_rules_fab//fab:defs.bzl", "fab_package_test")
 
-fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-bare">bare</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
+fab_package_test(<a href="#fab_package_test-name">name</a>, <a href="#fab_package_test-bare">bare</a>, <a href="#fab_package_test-copper_layers">copper_layers</a>, <a href="#fab_package_test-package">package</a>, <a href="#fab_package_test-vendor">vendor</a>, <a href="#fab_package_test-want_error">want_error</a>)
 </pre>
 
 Checks a fab house's ZIP against what the vendor takes.
@@ -126,7 +126,10 @@ from the vendor's documents, so a bug in fab_package fails it. It checks:
   with `bare = True` (a `fab_package` without `bom` and `pos`), neither;
 * every row has a designator; in the placement list, X and Y are in mm,
   the rotation is at least 0 and below 360, and the layer is one the
-  vendor names.
+  vendor names;
+* with `copper_layers`, one Gerber of each inner copper layer the board
+  has, from `In1.Cu` to `In<copper_layers - 2>.Cu`, and none it does not:
+  a board of 2 layers has none.
 
 It does not compare the BOM with the placement list: DNP parts are in the
 one and not the other, and `kicad_pos(smd_only = True)` leaves out
@@ -139,6 +142,7 @@ through-hole parts.
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="fab_package_test-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="fab_package_test-bare"></a>bare |  The ZIP is a bare board's: it must have no BOM and no placement list. False by default: it must have one of each, so a package that lost them fails.   | Boolean | optional |  `False`  |
+| <a id="fab_package_test-copper_layers"></a>copper_layers |  The board's number of copper layers, such as 6: the ZIP must then hold exactly its inner layers' Gerbers, `In1.Cu` to `In<copper_layers - 2>.Cu` (none for 2). 0, the default, does not check them.   | Integer | optional |  `0`  |
 | <a id="fab_package_test-package"></a>package |  The ZIP (`fab_package`).   | <a href="https://bazel.build/concepts/labels">Label</a> | required |  |
 | <a id="fab_package_test-vendor"></a>vendor |  The fab house: jlcpcb, pcbway.   | String | required |  |
 | <a id="fab_package_test-want_error"></a>want_error |  For a known-bad ZIP: text that one of the problems must contain. The test then passes only if the check finds it. Empty by default: the ZIP must be good.   | String | optional |  `""`  |
@@ -295,8 +299,12 @@ kicad_drc_test(
 )
 ```
 
-The board is two-layer, 85.60 x 53.98 mm with corners of 3.18 mm
-(ISO/IEC 7810 ID-1). Its features start at the vendor's minimum and
+The board is 85.60 x 53.98 mm with corners of 3.18 mm (ISO/IEC 7810
+ID-1), with the stackup's copper layers: a 4L or 6L board has In1.Cu
+to In2.Cu or In4.Cu, and ladders of the inner track width and spacing
+on In1.Cu, labelled on the silkscreen above them (issue #35); the
+vendors' inner rules can differ from the outer ones. Vias are through
+vias: no vendor's rules list blind, buried or plugged ones. Its features start at the vendor's minimum and
 go up, each labelled on the silkscreen with its size in mm: track
 widths, track spacings, vias (drill and pad), plated holes (drill and
 pad), non-plated holes, gaps between SMD pads (the solder mask web),
@@ -334,8 +342,8 @@ make it too big for its row.
 | :------------- | :------------- | :------------- |
 | <a id="fab_swatch-name"></a>name |  the board's name.   |  none |
 | <a id="fab_swatch-vendor"></a>vendor |  the fab house: generic, jlcpcb or pcbway.   |  none |
-| <a id="fab_swatch-stackup"></a>stackup |  layers and outer copper weight: 2L-1oz, 4L-1oz, 4L-2oz or 6L-1oz. The board has two layers; the stackup picks the rules.   |  `"4L-1oz"` |
-| <a id="fab_swatch-below"></a>below |  empty, or a feature to draw under its minimum: edge, text_height, track_spacing, track_width, via_annular or via_hole.   |  `""` |
+| <a id="fab_swatch-stackup"></a>stackup |  layers and outer copper weight: 2L-1oz, 4L-1oz, 4L-2oz or 6L-1oz. It picks the rules and the board's copper layers.   |  `"4L-1oz"` |
+| <a id="fab_swatch-below"></a>below |  empty, or a feature to draw under its minimum: edge, inner_track_spacing or inner_track_width (4 layers or more), text_height, track_spacing, track_width, via_annular or via_hole.   |  `""` |
 | <a id="fab_swatch-kwargs"></a>kwargs |  common attributes, such as `visibility` and `tags`.   |  none |
 
 
