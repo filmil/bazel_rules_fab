@@ -37,9 +37,9 @@ by its hash, so the build needs no `git` on the host:
 bazel_dep(name = "hdlf_rules_kicad", version = "0.0.0")
 archive_override(
     module_name = "hdlf_rules_kicad",
-    integrity = "sha256-bz9RwwNoS0kCPESYe+qbysvlvuv9rVQpqbeqZ+Qj91U=",
-    strip_prefix = "bazel_rules_kicad-ecd6ae9329a7830c8f7144db88b5d2bbb24041e9",
-    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/ecd6ae9329a7830c8f7144db88b5d2bbb24041e9.tar.gz"],
+    integrity = "sha256-46jre2ndNDzCLSCl8vCHchOngJMCRWuO2zdDKuFB/Ew=",
+    strip_prefix = "bazel_rules_kicad-9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414",
+    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414.tar.gz"],
 )
 ```
 
