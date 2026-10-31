@@ -4,10 +4,10 @@
 // and project (issue #32):
 //
 //	assembly --spec spec.json --lib Device=Device.kicad_sym ... --sch out.kicad_sch \
-//	    [--fp Resistor_SMD:R_0402_1005Metric=R_0402_1005Metric.kicad_mod ... \
-//	     --pcb out.kicad_pcb --pro out.kicad_pro \
-//	     --vendor_rules vendor.kicad_dru --rules board.kicad_dru \
-//	     --silk_pairs pairs.json [--bad label_on_pad]]
+//	    --fp Resistor_SMD:R_0402_1005Metric=R_0402_1005Metric.kicad_mod ... \
+//	    --pcb out.kicad_pcb --pro out.kicad_pro \
+//	    --vendor_rules vendor.kicad_dru --rules board.kicad_dru \
+//	    --silk_pairs pairs.json [--bad label_on_pad|silk_near_pad]
 //
 // The board's rules are the vendor's, as they are, and one rule after
 // them (assembly.OwnSilkRule); pairs.json holds the count of the
@@ -38,12 +38,12 @@ func (l *libs) Set(v string) error { *l = append(*l, v); return nil }
 func run() error {
 	specPath := flag.String("spec", "", "the ladder, as JSON")
 	out := flag.String("sch", "", "where to write the schematic")
-	pcbPath := flag.String("pcb", "", "where to write the board, if anywhere")
-	proPath := flag.String("pro", "", "where to write the project; with --pcb")
-	vendorRules := flag.String("vendor_rules", "", "the vendor's design rules (.kicad_dru); with --pcb")
-	rulesPath := flag.String("rules", "", "where to write the board's design rules; with --pcb")
-	pairsPath := flag.String("silk_pairs", "", "where to write the count of own-silkscreen pairs; with --pcb")
-	bad := flag.String("bad", "", "a known-bad variant of the board: label_on_pad")
+	pcbPath := flag.String("pcb", "", "where to write the board")
+	proPath := flag.String("pro", "", "where to write the project")
+	vendorRules := flag.String("vendor_rules", "", "the vendor's design rules (.kicad_dru)")
+	rulesPath := flag.String("rules", "", "where to write the board's design rules")
+	pairsPath := flag.String("silk_pairs", "", "where to write the count of own-silkscreen pairs")
+	bad := flag.String("bad", "", "a known-bad variant of the board: label_on_pad or silk_near_pad")
 	var ls, fs libs
 	flag.Var(&ls, "lib", "NICKNAME=PATH of a .kicad_sym; repeat it")
 	flag.Var(&fs, "fp", "LIB:NAME=PATH of a .kicad_mod; repeat it")
@@ -51,11 +51,8 @@ func run() error {
 	if *specPath == "" || *out == "" || len(ls) == 0 || flag.NArg() > 0 {
 		return fmt.Errorf("want --spec, --sch and --lib, and no other arguments")
 	}
-	board := []bool{*pcbPath != "", *proPath != "", len(fs) > 0, *vendorRules != "", *rulesPath != "", *pairsPath != ""}
-	for _, b := range board {
-		if b != board[0] {
-			return fmt.Errorf("give --pcb, --pro, --fp, --vendor_rules, --rules and --silk_pairs together, or none of them")
-		}
+	if *pcbPath == "" || *proPath == "" || len(fs) == 0 || *vendorRules == "" || *rulesPath == "" || *pairsPath == "" {
+		return fmt.Errorf("want --pcb, --pro, --fp, --vendor_rules, --rules and --silk_pairs")
 	}
 	b, err := os.ReadFile(*specPath)
 	if err != nil {
@@ -80,13 +77,6 @@ func run() error {
 			return err
 		}
 		libraries[name] = lib
-	}
-	if *pcbPath == "" {
-		sch, err := assembly.Schematic(spec, libraries)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(*out, []byte(sch), 0o644)
 	}
 	if base(*pcbPath, ".kicad_pcb") != spec.Project || base(*proPath, ".kicad_pro") != spec.Project || base(*out, ".kicad_sch") != spec.Project {
 		return fmt.Errorf("--sch, --pcb and --pro must be named after the project %q: KiCad pairs them by name", spec.Project)

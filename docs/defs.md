@@ -334,8 +334,9 @@ Silkscreen"); the fab clips silkscreen off pads. So the board's design
 rules are the vendor's, as they are, and one rule after them: a
 footprint's silkscreen may come 0.09 mm from its own pads. Everything
 else, the generator's labels among it, keeps the vendor's clearance.
-`<name>_silk_pairs.json` holds how many such pairs the board has: the
-violations DRC finds with the vendor's rules alone.
+`<name>_silk_pairs.json`, in the package of the call, holds how many
+such pairs the board has: the violations DRC finds with the vendor's
+rules alone.
 
 Each `ASSEMBLY_PARTS` entry has `rung` (the package, such as "0402"
 or "SOT-23"), `kind` ("passive" or "ic"), `pitch_mm` for an IC,

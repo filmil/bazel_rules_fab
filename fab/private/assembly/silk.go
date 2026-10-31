@@ -209,6 +209,9 @@ func OwnSilkPairs(ref string, fp *Node, limit float64) (int, error) {
 	var shapes []shape
 	var names []string
 	for _, p := range fp.Children("pad") {
+		if !copper(p) {
+			continue // a paste-only aperture: no copper for silkscreen to clear
+		}
 		if s, ok := padShape(p); ok {
 			shapes = append(shapes, s)
 			names = append(names, p.Arg(0))
@@ -229,6 +232,10 @@ func OwnSilkPairs(ref string, fp *Node, limit float64) (int, error) {
 			for _, x := range sg {
 				d = math.Min(d, x.clearance(s))
 			}
+			// A filled shape covers the pad if it holds the pad's center.
+			if filled(it) && inside(sg, s.c) {
+				d = 0
+			}
 			if d < limit-1e-6 {
 				if d < OwnSilkMin-1e-6 {
 					return 0, fmt.Errorf("%s: its %s comes %s mm from pad %s, under even %s mm", ref, it.Head(), strconv.FormatFloat(d, 'f', 3, 64), names[i], num(OwnSilkMin))
@@ -238,4 +245,25 @@ func OwnSilkPairs(ref string, fp *Node, limit float64) (int, error) {
 		}
 	}
 	return n, nil
+}
+
+// filled says whether a silkscreen shape is filled: (fill yes), (fill
+// solid), or a polygon, which KiCad fills unless told not to.
+func filled(it *Node) bool {
+	f := it.Child("fill")
+	if f == nil {
+		return it.Head() == "fp_poly"
+	}
+	return f.Arg(0) == "yes" || f.Arg(0) == "solid"
+}
+
+// inside says whether q is inside the closed outline sg (even-odd rule).
+func inside(sg []seg, q pt) bool {
+	in := false
+	for _, e := range sg {
+		if (e.a.y > q.y) != (e.b.y > q.y) && q.x < e.a.x+(q.y-e.a.y)*(e.b.x-e.a.x)/(e.b.y-e.a.y) {
+			in = !in
+		}
+	}
+	return in
 }

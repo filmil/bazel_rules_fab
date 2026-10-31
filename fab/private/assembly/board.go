@@ -129,12 +129,14 @@ type pad struct {
 	w, h float64
 }
 
+// pads are a footprint's copper pads; paste-only apertures, such as an
+// exposed pad's, are left out.
 func pads(fp *Node) []pad {
 	var out []pad
 	for _, p := range fp.Children("pad") {
 		at := p.Child("at")
 		sz := p.Child("size")
-		if at == nil || sz == nil {
+		if at == nil || sz == nil || !copper(p) {
 			continue
 		}
 		w, h := float(sz, 0), float(sz, 1)
@@ -144,6 +146,20 @@ func pads(fp *Node) []pad {
 		out = append(out, pad{p.Arg(0), pt{float(at, 0), float(at, 1)}, w, h})
 	}
 	return out
+}
+
+// copper says whether a pad has copper: a layer *.Cu or ?.Cu.
+func copper(p *Node) bool {
+	l := p.Child("layers")
+	if l == nil {
+		return false
+	}
+	for _, c := range l.List[1:] {
+		if strings.HasSuffix(c.Atom, ".Cu") {
+			return true
+		}
+	}
+	return false
 }
 
 // exit is where a measured pad's test point goes: straight out of the
@@ -329,6 +345,10 @@ func layout(r Rung, fp *Node) (*cell, error) {
 	}
 	c := &cell{r: r, fp: fp, exits: ex}
 	b := courtyard(fp)
+	// The ring that joins stacked pads may run round the courtyard.
+	ring := ringGap + trackWidth/2
+	b.add(b.x0-ring, b.y0-ring)
+	b.add(b.x1+ring, b.y1+ring)
 	for _, p := range pads(fp) {
 		b.add(p.at.x-p.w/2, p.at.y-p.h/2)
 		b.add(p.at.x+p.w/2, p.at.y+p.h/2)
@@ -339,9 +359,11 @@ func layout(r Rung, fp *Node) (*cell, error) {
 		b.add(tp.x+tpCourtyardR, tp.y+tpCourtyardR)
 		// The polarity mark beside its test point, across the exit, on
 		// the side away from the other test point.
-		other := ex[1-i]
+		// Compare along this test point's own lateral axis, also when
+		// the other one leaves on a perpendicular side.
+		other := ex[1-i].tp()
 		side := 1.0
-		if e.lateral() < other.lateral() {
+		if (e.dir.x != 0 && tp.y < other.y) || (e.dir.x == 0 && tp.x < other.x) {
 			side = -1
 		}
 		off := tpCourtyardR + textSize/2 + gap
@@ -542,6 +564,16 @@ func (p *pcb) joinCenter(c *cell, ox, oy float64, padNets map[string]int) error 
 		}
 		if math.Abs(end.x-center.at.x) > center.w/2 || math.Abs(end.y-center.at.y) > center.h/2 {
 			return fmt.Errorf("%s: pad %s does not face the center pad %s", c.r.Ref, e.num, center.num)
+		}
+		// The track must clear every other pad.
+		for _, q := range all {
+			if q.at == e.at || q.at == center.at {
+				continue
+			}
+			sh := shape{q.at, q.w / 2, q.h / 2, 0}
+			if d := (seg{e.at, end, trackWidth}).clearance(sh); d < clearance {
+				return fmt.Errorf("%s: the track from pad %s to the center pad %s comes %s mm from pad %s", c.r.Ref, e.num, center.num, num(d), q.num)
+			}
 		}
 		p.track(pt{ox + e.at.x, oy + e.at.y}, pt{ox + end.x, oy + end.y}, n)
 	}

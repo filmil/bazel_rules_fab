@@ -557,3 +557,60 @@ func TestJoinCenter(t *testing.T) {
 		t.Errorf("pads off the middle: %v", err)
 	}
 }
+
+// Test points that leave on perpendicular sides: each polarity mark sits
+// on its own test point's far side from the other test point, measured
+// along its own lateral axis.
+func TestLabelsPerpendicular(t *testing.T) {
+	fp := footprints(t)["F:U"]
+	// Pad 1 leaves left, pad 2 down: the left test point's mark goes up,
+	// away from the lower test point.
+	c, err := layout(Rung{Ref: "U1", Footprint: "F:U", Measure: []string{"1", "2"}}, fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, down := c.exits[0].tp(), c.exits[1].tp()
+	if c.labels[0].y >= left.y {
+		t.Errorf("the left mark at y %v, its test point at %v: want it above, away from the lower one at %v", c.labels[0].y, left.y, down.y)
+	}
+	if (c.labels[1].x > down.x) != (left.x < down.x) {
+		t.Errorf("the lower mark at x %v, its test point at %v, the left one at %v", c.labels[1].x, down.x, left.x)
+	}
+	// The cell holds the ring round the courtyard.
+	cy := courtyard(fp)
+	if c.bounds.x1 < cy.x1+ringGap+trackWidth/2 || c.bounds.y0 > cy.y0-ringGap-trackWidth/2 {
+		t.Errorf("the cell %+v does not hold the ring round %+v", c.bounds, cy)
+	}
+}
+
+func TestOwnSilkFilled(t *testing.T) {
+	fp, err := ReadFootprint(`(footprint "X" (layer "F.Cu")
+		(fp_poly (pts (xy -1 -1) (xy 1 -1) (xy 1 1) (xy -1 1)) (stroke (width 0)) (fill solid) (layer "F.SilkS"))
+		(pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "F.Cu")))`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OwnSilkPairs("X1", fp, 0.15); err == nil || !strings.Contains(err.Error(), "under even") {
+		t.Errorf("a filled square over the pad: %v", err)
+	}
+}
+
+func TestJoinCenterClearance(t *testing.T) {
+	fps := footprints(t)
+	var err error
+	// Pad 5, in no symbol, sits by the track from pad 3 into the center.
+	fps["F:Q"], err = ReadFootprint(`(footprint "Q" (layer "F.Cu")
+	(fp_rect (start -2 -2) (end 2 2) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd"))
+	(pad "1" smd rect (at -1.5 0) (size 0.6 0.25) (layers "F.Cu"))
+	(pad "2" smd rect (at 0 -1.5) (size 0.25 0.6) (layers "F.Cu"))
+	(pad "3" smd rect (at 1.5 0.25) (size 0.6 0.25) (layers "F.Cu"))
+	(pad "4" smd rect (at 0 0) (size 1.0 1.0) (layers "F.Cu"))
+	(pad "5" smd rect (at 0.9 0.5) (size 0.2 0.2) (layers "F.Cu")))`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	amp := spec(Rung{Ref: "U1", Symbol: "Lib:AMP", Footprint: "F:Q", Value: "AMP", Measure: []string{"1", "2"}})
+	if _, _, _, err := Design(amp, libs(t), fps, BoardOptions{SilkClear: 0.15}); err == nil || !strings.Contains(err.Error(), "from pad 5") {
+		t.Errorf("a track by pad 5: %v", err)
+	}
+}
