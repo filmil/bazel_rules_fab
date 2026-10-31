@@ -111,6 +111,53 @@ fab_package_test(
 )
 ```
 
+### Assembly swatch
+
+`fab_assembly_swatch` is a ladder of real parts that a vendor's assembly
+service places, smallest first, each between two test points so that a
+multimeter shows whether it was soldered (issue #32):
+
+| Rung | Part | Reads |
+|---|---|---|
+| 0201, 0402, 0603, 0805, 1206 | 1 kΩ 1 % resistor (UNI-ROYAL) | 1.00 kΩ ± 1 %, either way |
+| SOT-23 | BAV99 (Nexperia) | about 0.6 V, pin 1 (+) to pin 3 |
+| SOIC-8 | NE5532 (Texas Instruments) | about 0.6 V, either way between pins 3 and 2 |
+| TSSOP-16, 0.65 mm | 74HC595PW (Nexperia) | about 0.6 V, pin 8 (+, GND) to pin 14 |
+| QFN-16, 0.5 mm | 74HC595BQ (Nexperia) | about 0.6 V, pin 8 (+, GND) to pin 14 |
+| LQFP-48, 0.5 mm | STM32F030C8T6 (ST) | about 0.6 V, pin 23 (+, VSS) to pin 10 |
+
+Each part is a catalog part, with its LCSC number, MPN, manufacturer and
+datasheet in `ASSEMBLY_PARTS`; each IC reading is across a diode its
+datasheet documents. Each vendor's assembly limits, with their sources,
+are in `ASSEMBLY_VENDORS`, and leave out what the vendor cannot place:
+
+* **JLCPCB**, Economic PCBA: from 0402 and 0.4 mm pitch
+  ([capabilities](https://jlcpcb.com/capabilities/pcb-assembly-capabilities)).
+  Economic takes the credit-card board as it is; Standard places 0201, but
+  needs boards of 70 × 70 mm with rails, so it would need a panel.
+* **PCBWay**: from 01005 and 0.25 mm pitch
+  ([capabilities](https://www.pcbway.com/assembly-capabilities.html)), so
+  every rung. The card is not panelized; PCBWay may panelize it on order,
+  as its [machine assembly page](https://www.pcbway.com/helpcenter/pcb_assembly_ordering/What_are_the_requests_on_pcb_for_assembly_by_machine_.html)
+  asks of boards with fewer than 200 solder points.
+
+```starlark
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_erc_test")
+
+fab_assembly_swatch(
+    name = "jlcpcb_assembly",
+    vendor = "jlcpcb",
+)
+
+kicad_erc_test(
+    name = "jlcpcb_assembly_erc_test",
+    schematic = ":jlcpcb_assembly",
+)
+```
+
+The schematic is here; its board and package follow.
+
 ## Building
 
 ```sh

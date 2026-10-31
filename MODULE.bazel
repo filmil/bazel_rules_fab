@@ -33,6 +33,11 @@ archive_override(
     urls = ["https://github.com/filmil/bazel_rules_kicad/archive/ecd6ae9329a7830c8f7144db88b5d2bbb24041e9.tar.gz"],
 )
 
+# KiCad's symbol libraries, which the assembly swatch's schematic uses
+# (issue #32): the same pinned libraries as hdlf_rules_kicad's rules.
+kicad = use_extension("@hdlf_rules_kicad//kicad:extensions.bzl", "kicad")
+use_repo(kicad, "kicad_libs")
+
 # kicad-druid 1.2.0: KiCad design rules for JLCPCB, PCBWay and a generic
 # fab (issue #8, MIT). Its releases have no assets, so this is the tag's
 # source archive, checked by its sha256.

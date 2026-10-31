@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_assembly_swatch (issue #32) as a user writes it: each vendor's
+# schematic, from a module that depends on hdlf_rules_fab, passes ERC.
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_erc_test")
+
+[
+    [
+        fab_assembly_swatch(
+            name = vendor,
+            vendor = vendor,
+        ),
+        kicad_erc_test(
+            name = vendor + "_erc_test",
+            size = "small",
+            schematic = ":" + vendor,
+        ),
+    ]
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+]

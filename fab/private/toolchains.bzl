@@ -29,6 +29,8 @@ def _helpers_toolchain_impl(ctx):
         # Tools that rules run in actions through run_tool, so built for the
         # execution platform: fab_package's packager (issue #9).
         "packager": ctx.attr.packager[DefaultInfo].files_to_run,
+        # The assembly swatch's schematic generator (issue #32).
+        "assembly": ctx.attr.assembly[DefaultInfo].files_to_run,
         # fab_swatch's generator (issue #24).
         "swatch": ctx.attr.swatch[DefaultInfo].files_to_run,
     })]
@@ -42,6 +44,7 @@ helpers_toolchain = rule(
         "swapcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
         "compare": attr.label(mandatory = True, executable = True, cfg = "target"),
         "packager": attr.label(mandatory = True, executable = True, cfg = "exec"),
+        "assembly": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "pkgcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
         "swatch": attr.label(mandatory = True, executable = True, cfg = "exec"),
     },

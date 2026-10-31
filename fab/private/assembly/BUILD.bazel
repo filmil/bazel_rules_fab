@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# The assembly swatch's schematic generator (issue #32). Pure Go, built
+# from source, in the helpers toolchain.
+go_library(
+    name = "assembly",
+    srcs = [
+        "schematic.go",
+        "sexpr.go",
+        "symbols.go",
+    ],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/assembly",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "assembly_test",
+    size = "small",
+    srcs = ["assembly_test.go"],
+    embed = [":assembly"],
+    pure = "on",
+)
+
+go_binary(
+    name = "cmd",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//fab/toolchains:__pkg__"],
+    deps = [":assembly"],
+)
