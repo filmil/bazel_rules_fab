@@ -35,7 +35,10 @@ the change.
    package before and after in the pull request. A change to a swatch
    board (`fab_swatch`, `fab_assembly_swatch` or their generators)
    attaches the `kicad_render` PNGs of both sides of each board it
-   changes.
+   changes: push them to a branch `pr-assets/<the PR's branch>` of this
+   repository, link them from the pull request by their
+   `raw.githubusercontent.com` URLs at that branch's commit, and ask the
+   operator to delete the branch after the merge.
 6. One logical change per pull request: one rule, one feature, or one
    design change.
 7. Stop and ask the operator before you:

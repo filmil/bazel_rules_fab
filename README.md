@@ -136,8 +136,29 @@ kicad_drc_test(
 )
 ```
 
-`below` draws one feature under the vendor's minimum, for a known-bad
-board that DRC must fail on that feature's rule (`SWATCH_BELOW`).
+`jlcpcb_swatch` is a `kicad_pcb` that carries the vendor's rules
+(`jlcpcb_swatch_rules`, a `fab_rules`), so its DRC uses them.
+
+`below` draws one feature a step under the vendor's minimum: a known-bad
+board, whose DRC must fail on that feature's rule and no other.
+`SWATCH_BELOW` maps each feature `below` takes to the DRC violation it
+gives:
+
+```starlark
+load("@hdlf_rules_fab//fab:defs.bzl", "SWATCH_BELOW", "fab_swatch")
+
+fab_swatch(
+    name = "jlcpcb_thin_track",
+    below = "track_width",
+    vendor = "jlcpcb",
+)
+
+kicad_drc_test(
+    name = "jlcpcb_thin_track_drc_test",
+    expect = SWATCH_BELOW["track_width"],  # "track_width"
+    pcb = ":jlcpcb_thin_track",
+)
+```
 
 ### Assembly swatch
 
@@ -230,8 +251,10 @@ versions, sources and licenses:
 * Through hdlf_rules_kicad, which runs KiCad for these rules: KiCad 9.0.9
   (GPL-3.0-or-later), KiCad's symbol and footprint libraries 9.0.9
   (CC-BY-SA 4.0 with the KiCad libraries exception), and the DejaVu
-  fonts 2.37; and, only for a build that renders or exports 3D models,
-  KiCad's 3D models (the same license as the libraries) and rain 2.2.1
+  fonts 2.37 (the Bitstream Vera fonts license, the DejaVu changes in the
+  public domain); and, only for a build that renders or exports 3D
+  models, KiCad's 3D models 9.0.9 (the same license as the libraries)
+  and rain 2.2.1
   (MIT), which fetches them. hdlf_rules_kicad's README lists each with
   its source:
   https://github.com/filmil/bazel_rules_kicad#licenses.
