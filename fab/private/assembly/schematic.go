@@ -148,12 +148,18 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tpUnits, _ := Units(tpSym)
+	tpPins, err := onePin(tpSym)
+	if err != nil {
+		return "", err
+	}
 	flagSym, err := embed("power:PWR_FLAG")
 	if err != nil {
 		return "", err
 	}
-	flagUnits, _ := Units(flagSym)
+	flagPins, err := onePin(flagSym)
+	if err != nil {
+		return "", err
+	}
 	refs := map[string]bool{}
 
 	y := 30.0
@@ -203,25 +209,31 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 		for _, u := range unitNums {
 			pins := units[u]
 			s.symbol(r.Symbol, r.Ref, r.Value, u, x, oy, part, props, pins)
-			// Each connection point once: stacked pins share one.
+			// Each connection point once: stacked pins share one, and so
+			// share the measured pin's net.
 			type pt struct{ x, y float64 }
-			done := map[pt]bool{}
+			netAt := map[pt]string{}
 			for _, p := range pins {
 				at := pt{grid(x + p.X), grid(oy - p.Y)}
 				if net, ok := nets[p.Number]; ok {
 					found[p.Number] = true
+					if other, ok := netAt[at]; ok && other != net {
+						return "", fmt.Errorf("%s: pins %s and %s are stacked", r.Ref, r.Measure[0], r.Measure[1])
+					}
+					if _, ok := netAt[at]; !ok {
+						s.label(net, at.x, at.y)
+					}
+					netAt[at] = net
+				}
+			}
+			done := map[pt]bool{}
+			for _, p := range pins {
+				at := pt{grid(x + p.X), grid(oy - p.Y)}
+				if net, ok := netAt[at]; ok {
 					if p.Type == "power_in" {
 						powerOn[net] = true
 					}
-					if !done[at] {
-						s.label(net, at.x, at.y)
-						done[at] = true
-					}
-				}
-			}
-			for _, p := range pins {
-				at := pt{grid(x + p.X), grid(oy - p.Y)}
-				if !done[at] {
+				} else if !done[at] {
 					s.noConnect(at.x, at.y)
 					done[at] = true
 				}
@@ -239,15 +251,15 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 			s.tp++
 			ref := fmt.Sprintf("TP%d", s.tp)
 			ty := grid(oy - 5.08 + float64(i)*10.16)
-			tpPin := tpUnits[1][0]
+			tpPin := tpPins[0]
 			s.symbol("Connector:TestPoint", ref, nets[m], 1, tx, ty, testPoint,
-				[][2]string{{"Footprint", "TestPoint:TestPoint_Pad_D1.5mm"}}, tpUnits[1])
+				[][2]string{{"Footprint", "TestPoint:TestPoint_Pad_D1.5mm"}}, tpPins)
 			s.label(nets[m], grid(tx+tpPin.X), grid(ty-tpPin.Y))
 			if powerOn[nets[m]] {
 				s.pwr++
 				fx := tx + 25.4
-				fp := flagUnits[1][0]
-				s.symbol("power:PWR_FLAG", fmt.Sprintf("#FLG%02d", s.pwr), "PWR_FLAG", 1, fx, ty, flag, [][2]string{{"Footprint", ""}}, flagUnits[1])
+				fp := flagPins[0]
+				s.symbol("power:PWR_FLAG", fmt.Sprintf("#FLG%02d", s.pwr), "PWR_FLAG", 1, fx, ty, flag, [][2]string{{"Footprint", ""}}, flagPins)
 				s.label(nets[m], grid(fx+fp.X), grid(ty-fp.Y))
 			}
 		}
@@ -271,4 +283,17 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 	out.WriteString(s.b.String())
 	out.WriteString("\t(sheet_instances\n\t\t(path \"/\"\n\t\t\t(page \"1\")\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n")
 	return out.String(), nil
+}
+
+// onePin returns the pins of a one-unit symbol with one pin, such as a
+// test point or a PWR_FLAG.
+func onePin(sym *Node) ([]Pin, error) {
+	units, err := Units(sym)
+	if err != nil {
+		return nil, err
+	}
+	if len(units) != 1 || len(units[1]) != 1 {
+		return nil, fmt.Errorf("symbol %s: want one unit with one pin", sym.Arg(0))
+	}
+	return units[1], nil
 }

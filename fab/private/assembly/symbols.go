@@ -69,17 +69,33 @@ func (l *Library) resolve(name string, depth int) (*Node, error) {
 			u.List[1] = Q(name + "_" + rest)
 		}
 	}
-	// The child's properties replace the parent's, or are added.
-	for _, p := range s.Children("property") {
+	// A derived symbol has its parent's units: KiCad lets it change only
+	// its properties and attributes (in_bom, pin_names, ...). Each of
+	// those replaces the parent's, or is added.
+	for _, c := range s.List[2:] {
+		switch c.Head() {
+		case "extends":
+			continue
+		case "symbol":
+			return nil, fmt.Errorf("%s:%s extends %s and has units of its own", l.Name, name, pname)
+		case "":
+			return nil, fmt.Errorf("%s:%s: unexpected atom %q", l.Name, name, c.Atom)
+		}
+		same := func(q *Node) bool {
+			if q.Head() != c.Head() {
+				return false
+			}
+			return c.Head() != "property" || q.Arg(0) == c.Arg(0)
+		}
 		replaced := false
 		for i, q := range out.List {
-			if q.Head() == "property" && q.Arg(0) == p.Arg(0) {
-				out.List[i] = p.Copy()
+			if same(q) {
+				out.List[i] = c.Copy()
 				replaced = true
 			}
 		}
 		if !replaced {
-			out.List = append(out.List, p.Copy())
+			out.List = append(out.List, c.Copy())
 		}
 	}
 	return out, nil
@@ -126,12 +142,18 @@ func Units(sym *Node) (map[int][]Pin, error) {
 			units[unit] = true
 		}
 		for _, p := range u.Children("pin") {
-			at := p.Child("at")
-			x, _ := strconv.ParseFloat(at.Arg(0), 64)
-			y, _ := strconv.ParseFloat(at.Arg(1), 64)
+			at, num, pname := p.Child("at"), p.Child("number"), p.Child("name")
+			if at == nil || num == nil || pname == nil {
+				return nil, fmt.Errorf("symbol %s: unit %q: a pin lacks at, number or name", name, u.Arg(0))
+			}
+			x, err1 := strconv.ParseFloat(at.Arg(0), 64)
+			y, err2 := strconv.ParseFloat(at.Arg(1), 64)
+			if err1 != nil || err2 != nil {
+				return nil, fmt.Errorf("symbol %s: pin %s: at %q %q", name, num.Arg(0), at.Arg(0), at.Arg(1))
+			}
 			pin := Pin{
-				Number: p.Child("number").Arg(0),
-				Name:   p.Child("name").Arg(0),
+				Number: num.Arg(0),
+				Name:   pname.Arg(0),
 				Type:   p.Arg(0),
 				X:      x, Y: y,
 				Hidden: p.Child("hide") != nil && p.Child("hide").Arg(0) == "yes",

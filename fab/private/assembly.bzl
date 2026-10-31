@@ -191,25 +191,45 @@ def assembly_rungs(vendor, start = ""):
       The entries of ASSEMBLY_PARTS that the swatch has, smallest first.
     """
     v = ASSEMBLY_VENDORS[vendor]
-    smallest = PASSIVE_SIZES.index(v["smallest_passive"])
-    fits = []
-    for p in ASSEMBLY_PARTS:
-        if p["kind"] == "passive":
-            ok = PASSIVE_SIZES.index(p["rung"]) >= smallest
-        else:
-            ok = p["pitch_mm"] >= v["min_pitch_mm"]
-        fits.append(ok)
+    limits = [assembly_limit(v, p) for p in ASSEMBLY_PARTS]
     if start:
         names = [p["rung"] for p in ASSEMBLY_PARTS]
         if start not in names:
             fail("start %r: want one of %s" % (start, names))
         i = names.index(start)
-        if not fits[i]:
-            p = ASSEMBLY_PARTS[i]
-            limit = ("smallest package %s" % v["smallest_passive"]) if p["kind"] == "passive" else ("finest pitch %s mm" % v["min_pitch_mm"])
-            fail("%s %s cannot place %s: below its %s (%s)" % (v["name"], v["tier"], start, limit, v["sources"][0]))
-        return [p for j, p in enumerate(ASSEMBLY_PARTS) if j >= i and fits[j]]
-    return [p for j, p in enumerate(ASSEMBLY_PARTS) if fits[j]]
+        if limits[i]:
+            fail(assembly_refusal(v, ASSEMBLY_PARTS[i]))
+        return [p for j, p in enumerate(ASSEMBLY_PARTS) if j >= i and not limits[j]]
+    return [p for j, p in enumerate(ASSEMBLY_PARTS) if not limits[j]]
+
+def assembly_limit(v, p):
+    """Returns the vendor's limit that a part is below, or "" if it fits.
+
+    Args:
+      v: an entry of ASSEMBLY_VENDORS.
+      p: an entry of ASSEMBLY_PARTS.
+
+    Returns:
+      "smallest package 0402", "finest pitch 0.4 mm", or "".
+    """
+    if p["kind"] == "passive":
+        if PASSIVE_SIZES.index(p["rung"]) < PASSIVE_SIZES.index(v["smallest_passive"]):
+            return "smallest package %s" % v["smallest_passive"]
+    elif p["pitch_mm"] < v["min_pitch_mm"]:
+        return "finest pitch %s mm" % v["min_pitch_mm"]
+    return ""
+
+def assembly_refusal(v, p):
+    """Returns the message for a part the vendor cannot place.
+
+    Args:
+      v: an entry of ASSEMBLY_VENDORS.
+      p: an entry of ASSEMBLY_PARTS that is below one of its limits.
+
+    Returns:
+      The message, with the limit's source.
+    """
+    return "%s %s cannot place %s: below its %s (%s)" % (v["name"], v["tier"], p["rung"], assembly_limit(v, p), v["sources"][0])
 
 # The symbol libraries the parts and the test points use.
 _LIBS = ["74xx", "Amplifier_Operational", "Connector", "Device", "Diode", "MCU_ST_STM32F0", "power"]
@@ -308,6 +328,16 @@ def fab_assembly_swatch(name, vendor, start = "", **kwargs):
     carry no-connect flags, and a net with a power input pin has a
     PWR_FLAG, so ERC passes. The fields carry LCSC, MPN and Manufacturer
     for the BOM.
+
+    Each `ASSEMBLY_PARTS` entry has `rung` (the package, such as "0402"
+    or "SOT-23"), `kind` ("passive" or "ic"), `pitch_mm` for an IC,
+    `symbol` and `footprint` (from @kicad_libs), `value`, `ref` (the
+    reference prefix), `measure` (the two pins the test points go to),
+    `reading` (what a meter shows across them), `silk` (what the board
+    prints by the test pads), and `fields` (Datasheet, LCSC, MPN,
+    Manufacturer, for the schematic and the BOM). Each `ASSEMBLY_VENDORS` entry has `name`,
+    `tier` (the assembly service), `smallest_passive`, `min_pitch_mm`, and
+    `sources` (the URLs the limits come from).
 
     `name` is a `kicad_schematic`, for `kicad_erc_test` and `kicad_bom`.
     The board and its package follow in issue #32 (b).

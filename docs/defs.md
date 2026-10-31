@@ -312,6 +312,16 @@ carry no-connect flags, and a net with a power input pin has a
 PWR_FLAG, so ERC passes. The fields carry LCSC, MPN and Manufacturer
 for the BOM.
 
+Each `ASSEMBLY_PARTS` entry has `rung` (the package, such as "0402"
+or "SOT-23"), `kind` ("passive" or "ic"), `pitch_mm` for an IC,
+`symbol` and `footprint` (from @kicad_libs), `value`, `ref` (the
+reference prefix), `measure` (the two pins the test points go to),
+`reading` (what a meter shows across them), `silk` (what the board
+prints by the test pads), and `fields` (Datasheet, LCSC, MPN,
+Manufacturer, for the schematic and the BOM). Each `ASSEMBLY_VENDORS` entry has `name`,
+`tier` (the assembly service), `smallest_passive`, `min_pitch_mm`, and
+`sources` (the URLs the limits come from).
+
 `name` is a `kicad_schematic`, for `kicad_erc_test` and `kicad_bom`.
 The board and its package follow in issue #32 (b).
 

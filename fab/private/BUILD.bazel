@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+load(":assembly_limits_test.bzl", "limits_test", "rungs_test")
 
 bzl_library(
     name = "private",
@@ -30,3 +31,16 @@ string_flag(
 
 # The BUILD file of the kicad-druid archive (MODULE.bazel).
 exports_files(["kicad_druid.BUILD"])
+
+# The assembly swatch's vendor limits on their own, with a made-up coarse
+# vendor for the pitch limit that neither real vendor reaches. Here, as
+# assembly.bzl loads only from //fab.
+limits_test(
+    name = "assembly_limits_test",
+    size = "small",
+)
+
+rungs_test(
+    name = "assembly_rungs_test",
+    size = "small",
+)

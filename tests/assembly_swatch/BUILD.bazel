@@ -88,6 +88,21 @@ fab_assembly_swatch(
 fails_test(
     name = "jlcpcb_0201_test",
     size = "small",
-    message = "JLCPCB Economic PCBA cannot place 0201: below its smallest package 0402",
-    target_under_test = ":jlcpcb_0201_files",
+    message = "JLCPCB Economic PCBA cannot place 0201: below its smallest package 0402 (https://jlcpcb.com/capabilities/pcb-assembly-capabilities)",
+    target_under_test = ":jlcpcb_0201",
+)
+
+# A rung that is not in the ladder.
+fab_assembly_swatch(
+    name = "unknown_start",
+    start = "0101",
+    tags = ["manual"],
+    vendor = "pcbway",
+)
+
+fails_test(
+    name = "unknown_start_test",
+    size = "small",
+    message = "start \"0101\": want one of",
+    target_under_test = ":unknown_start",
 )

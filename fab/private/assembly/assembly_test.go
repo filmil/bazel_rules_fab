@@ -7,8 +7,9 @@ import (
 	"testing"
 )
 
-// A small library: a two-pin part, a derived one, a two-unit part with a
-// power unit, and the test point and flag the schematic uses.
+// A small library: a two-pin part, derived ones, a two-unit part with a
+// power unit, parts with stacked pins, malformed parts, and the test
+// point and flag the schematic uses.
 const lib = `(kicad_symbol_lib
 	(version 20241209)
 	(symbol "R"
@@ -26,6 +27,7 @@ const lib = `(kicad_symbol_lib
 		(property "Reference" "U")
 		(property "Value" "OPA")
 		(property "Description" "parent")
+		(in_bom yes)
 		(symbol "OPA_1_1"
 			(pin input line (at -7.62 2.54 0) (length 2.54) (name "+") (number "3"))
 			(pin input line (at -7.62 -2.54 0) (length 2.54) (name "-") (number "2"))
@@ -39,6 +41,33 @@ const lib = `(kicad_symbol_lib
 		(extends "OPA")
 		(property "Value" "CHILD")
 		(property "Description" "a \"derived\" part")
+	)
+	(symbol "DNP"
+		(extends "OPA")
+		(in_bom no)
+	)
+	(symbol "BADCHILD"
+		(extends "OPA")
+		(symbol "BADCHILD_1_1")
+	)
+	(symbol "NOPIN"
+		(symbol "NOPIN_1_1"
+			(pin passive line (at 0 0 90) (length 0) (name "~"))
+		)
+	)
+	(symbol "MCU"
+		(symbol "MCU_1_1"
+			(pin passive line (at 0 2.54 270) (length 2.54) (name "PA0") (number "1"))
+			(pin passive line (at 0 -2.54 90) (length 2.54) (name "PB0") (number "2"))
+			(pin power_in line (at 0 -2.54 90) (length 2.54) (hide yes) (name "VSS") (number "3"))
+			(pin passive line (at 2.54 0 180) (length 2.54) (name "PA1") (number "4"))
+		)
+	)
+	(symbol "SHORT"
+		(symbol "SHORT_1_1"
+			(pin passive line (at 0 0 90) (length 2.54) (name "A") (number "1"))
+			(pin passive line (at 0 0 90) (length 2.54) (name "B") (number "2"))
+		)
 	)
 	(symbol "TestPoint"
 		(property "Reference" "TP")
@@ -96,6 +125,49 @@ func TestExtends(t *testing.T) {
 	}
 	if len(units) != 2 || len(units[1]) != 2 || units[2][0].Type != "power_in" {
 		t.Errorf("units %+v", units)
+	}
+}
+
+func TestExtendsAttributes(t *testing.T) {
+	s, err := libs(t)["Lib"].Symbol("DNP")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	Write(&b, s, 0)
+	if out := b.String(); strings.Count(out, "(in_bom") != 1 || !strings.Contains(out, "(in_bom no)") {
+		t.Errorf("the derived symbol's in_bom does not replace its parent's:\n%s", out)
+	}
+	if _, err := libs(t)["Lib"].Symbol("BADCHILD"); err == nil || !strings.Contains(err.Error(), "units of its own") {
+		t.Errorf("a derived symbol with units: %v", err)
+	}
+	if _, err := libs(t)["Lib"].Symbol("NOPIN"); err != nil {
+		t.Fatal(err)
+	}
+	nopin, _ := libs(t)["Lib"].Symbol("NOPIN")
+	if _, err := Units(nopin); err == nil || !strings.Contains(err.Error(), "lacks at, number or name") {
+		t.Errorf("a pin with no number: %v", err)
+	}
+}
+
+// A measured pin stacked with a hidden power pin: one label, no
+// no-connect flag on the stack, and a PWR_FLAG on its net.
+func TestStackedPins(t *testing.T) {
+	out, err := Schematic(spec(Rung{Ref: "U1", Symbol: "Lib:MCU", Footprint: "F:U", Value: "MCU", Measure: []string{"1", "2"}}), libs(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(out, `(label "U1_B"`); n != 3 {
+		t.Errorf("%d U1_B labels, want 3 (pin stack, test point, flag)", n)
+	}
+	if !strings.Contains(out, `(reference "#FLG01")`) {
+		t.Error("the stacked power pin's net has no PWR_FLAG")
+	}
+	if n := strings.Count(out, "(no_connect"); n != 1 {
+		t.Errorf("%d no-connect flags, want 1 (PA1)", n)
+	}
+	if _, err := Schematic(spec(Rung{Ref: "U1", Symbol: "Lib:SHORT", Measure: []string{"1", "2"}}), libs(t)); err == nil || !strings.Contains(err.Error(), "stacked") {
+		t.Errorf("two measured pins stacked: %v", err)
 	}
 }
 
