@@ -8,9 +8,7 @@
 # generator is this module's own Go, built from source in the helpers
 # toolchain, like fab_package's packager.)
 load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_drill", "kicad_gerbers")
-load("//fab:defs.bzl", "SWATCH_BELOW", "determinism_test", "fab_swatch")
-
-package(default_visibility = ["//tests/fab_package_test:__pkg__"])
+load("//fab:defs.bzl", "FAB_STACKUPS", "SWATCH_BELOW", "determinism_test", "fab_swatch")
 
 # The swatches: one line per vendor and stackup.
 [
@@ -33,10 +31,12 @@ package(default_visibility = ["//tests/fab_package_test:__pkg__"])
         kicad_gerbers(
             name = name + "_gerbers",
             pcb = ":" + name,
+            visibility = ["//tests/fab_package_test:__pkg__"],
         ),
         kicad_drill(
             name = name + "_drill",
             pcb = ":" + name,
+            visibility = ["//tests/fab_package_test:__pkg__"],
         ),
     ]
     for name, vendor, stackup in [
@@ -53,12 +53,7 @@ package(default_visibility = ["//tests/fab_package_test:__pkg__"])
             "jlcpcb",
             "pcbway",
         ]
-        for stackup in [
-            "2L-1oz",
-            "4L-1oz",
-            "4L-2oz",
-            "6L-1oz",
-        ]
+        for stackup in FAB_STACKUPS
     ]
 ]
 
