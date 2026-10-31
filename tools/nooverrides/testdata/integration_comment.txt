@@ -1,5 +1,5 @@
 local_path_override(
     # the module under test
-    module_name = "rules_fab",
+    module_name = "hdlf_rules_fab",
     path = "..",
 )

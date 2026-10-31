@@ -28,17 +28,17 @@ func TestCheck(t *testing.T) {
 		file, allow, want string // want: "" for none, else a problem's text
 	}{
 		{"root_clean.txt", "", ""},
-		{"root_archive.txt", "", `:1: archive_override of "rules_kicad"`},
+		{"root_archive.txt", "", `:1: archive_override of "hdlf_rules_kicad"`},
 		{"root_local.txt", "", `:1: local_path_override of "y"`},
-		{"integration_clean.txt", "rules_fab", ""},
-		{"integration_comment.txt", "rules_fab", ""},
-		{"integration_archive.txt", "rules_fab", `:6: archive_override of "rules_kicad"`},
-		{"integration_git.txt", "rules_fab", `:6: git_override of "z"`},
-		{"integration_other.txt", "rules_fab", `local_path_override of "other"`},
-		{"integration_two.txt", "rules_fab", `:6: local_path_override of "rules_fab"`},
-		{"integration_none.txt", "rules_fab", `no local_path_override of "rules_fab"`},
+		{"integration_clean.txt", "hdlf_rules_fab", ""},
+		{"integration_comment.txt", "hdlf_rules_fab", ""},
+		{"integration_archive.txt", "hdlf_rules_fab", `:6: archive_override of "hdlf_rules_kicad"`},
+		{"integration_git.txt", "hdlf_rules_fab", `:6: git_override of "z"`},
+		{"integration_other.txt", "hdlf_rules_fab", `local_path_override of "other"`},
+		{"integration_two.txt", "hdlf_rules_fab", `:6: local_path_override of "hdlf_rules_fab"`},
+		{"integration_none.txt", "hdlf_rules_fab", `no local_path_override of "hdlf_rules_fab"`},
 		// The integration module's override fails the root's check.
-		{"integration_clean.txt", "", `local_path_override of "rules_fab"`},
+		{"integration_clean.txt", "", `local_path_override of "hdlf_rules_fab"`},
 	} {
 		got := strings.Join(Check(c.file, read(t, c.file), c.allow), "\n")
 		switch {

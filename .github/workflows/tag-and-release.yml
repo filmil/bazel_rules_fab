@@ -105,12 +105,12 @@ jobs:
       # An override in a root module bypasses the registry, so the checks
       # above pass with one; the BCR rejects a module that has one. This
       # checks MODULE.bazel and integration/MODULE.bazel (all but its
-      # local_path_override of rules_fab).
+      # local_path_override of hdlf_rules_fab).
       - name: The modules override no dependency
         run: |
           set -o errexit -o nounset -o pipefail
           bazel run //tools/nooverrides -- "${PWD}"
-          bazel run //tools/nooverrides -- --allow_local_path=rules_fab "${PWD}/integration"
+          bazel run //tools/nooverrides -- --allow_local_path=hdlf_rules_fab "${PWD}/integration"
 
   tag:
     needs: [check, bcr_ready]

@@ -2,7 +2,7 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # The packager of fab_package (issue #9): a fab house's ZIP from
-# rules_kicad's outputs. Pure Go, built from source.
+# hdlf_rules_kicad's outputs. Pure Go, built from source.
 go_library(
     name = "packager",
     srcs = ["packager.go"],

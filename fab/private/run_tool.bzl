@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The one place where rules_fab starts an action that runs a tool.
+"""The one place where hdlf_rules_fab starts an action that runs a tool.
 
 Every rule runs its tools through `run_tool`; the hermeticity lint fails on
 `ctx.actions.run` or `ctx.actions.run_shell` anywhere else (spec section

@@ -98,7 +98,7 @@ so a board can come back with parts turned. `rotations` corrects them: each key
 is a regular expression that must match a whole footprint name (the
 position file's `Package`), each value the degrees to add. The rules are
 tried in the order written, and the first match counts. It is empty by
-default: rules_fab ships no table yet.
+default: hdlf_rules_fab ships no table yet.
 """,
     attrs = {
         "vendor": attr.string(

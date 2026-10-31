@@ -12,7 +12,7 @@
 //	bazel run //tools:mirror -- --dry_run=false --built_dir=/path/to/built
 //
 // --built_dir holds the built assets by name, made by a script outside
-// this tool (rules_fab has none yet; kicad-druid is mirrored as it is). Each command is printed before it
+// this tool (hdlf_rules_fab has none yet; kicad-druid is mirrored as it is). Each command is printed before it
 // runs. An upload stops before running any command if a file does not
 // match the manifest, in any release. gh refuses to replace an asset that
 // is already in the release.

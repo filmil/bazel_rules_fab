@@ -4,7 +4,7 @@
 // Gerber and drill files, a bill of materials and a component placement
 // list, laid out and named as the vendor wants them (issue #9).
 //
-// The inputs are rules_kicad's outputs: the Gerber and drill files of
+// The inputs are hdlf_rules_kicad's outputs: the Gerber and drill files of
 // kicad_gerbers and kicad_drill, the CSV of kicad_bom (columns Refs, Value,
 // Footprint, and DNP and LCSC when present) and the CSV of kicad_pos
 // (Ref, Val, Package, PosX, PosY, Rot, Side).

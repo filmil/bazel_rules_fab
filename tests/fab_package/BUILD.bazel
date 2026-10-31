@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# fab_package (issues #9, #10) on fixture files in the shape of rules_kicad's
+# fab_package (issues #9, #10) on fixture files in the shape of hdlf_rules_kicad's
 # outputs (board/): the ZIP's entries and CSVs, a rotation correction, the
 # same bytes in two configurations.
 load("@rules_go//go:def.bzl", "go_test")

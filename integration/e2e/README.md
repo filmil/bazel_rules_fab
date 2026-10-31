@@ -1,7 +1,7 @@
 # The e2e design
 
-rules_kicad's e2e design (its `integration/e2e`, as of commit adb54e1),
-copied as the board the fab rules run on (issue #8). See rules_kicad's
+hdlf_rules_kicad's e2e design (its `integration/e2e`, as of commit adb54e1),
+copied as the board the fab rules run on (issue #8). See hdlf_rules_kicad's
 README of it for what the design holds: a 22 mm by 12 mm, two-layer board
 with a header, a resistor and an LED.
 

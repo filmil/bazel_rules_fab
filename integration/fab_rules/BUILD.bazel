@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # The e2e board passes KiCad's design rules check with JLCPCB's rules, for
-# two layers and 1 oz copper (issue #8). rules_kicad's canary also checks
+# two layers and 1 oz copper (issue #8). hdlf_rules_kicad's canary also checks
 # that KiCad read the rule file.
-load("@rules_fab//fab:defs.bzl", "fab_rules")
-load("@rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_pcb")
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_rules")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_pcb")
 
 fab_rules(
     name = "jlcpcb_rules",

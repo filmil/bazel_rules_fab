@@ -5,8 +5,8 @@
 # for fails analysis. (An unknown vendor or stackup fails when the BUILD
 # file loads: the attributes list their values.)
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_report", "kicad_pcb", "kicad_schematic")
 load("@rules_go//go:def.bzl", "go_test")
-load("@rules_kicad//kicad:defs.bzl", "kicad_drc_report", "kicad_pcb", "kicad_schematic")
 load("//fab:defs.bzl", "fab_rules")
 load(":fails_test.bzl", "fails_test")
 

@@ -85,7 +85,7 @@ func TestManifestMatchesModule(t *testing.T) {
 			}
 		}
 	}
-	// The override of rules_kicad (issue #7) is the one other archive.
+	// The override of hdlf_rules_kicad (issue #7) is the one other archive.
 	for u := range urls {
 		if !known[u] && !strings.HasPrefix(u, "https://github.com/filmil/bazel_rules_kicad/archive/") {
 			t.Errorf("MODULE.bazel fetches %s, which is neither a mirrored asset nor its upstream", u)

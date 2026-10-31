@@ -1,1 +1,1 @@
-bazel_dep(name = "rules_fab", version = "0.0.0")
+bazel_dep(name = "hdlf_rules_fab", version = "0.0.0")
