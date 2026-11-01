@@ -3,9 +3,9 @@
 # fab_assembly_swatch (issue #32, part a): each vendor's schematic passes
 # ERC, its BOM carries every part's LCSC number, MPN and manufacturer,
 # and a part below the vendor's smallest package is refused (spec T3).
-load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_erc_test")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_bom", "kicad_drc_report", "kicad_drc_test", "kicad_drill", "kicad_erc_test", "kicad_gerbers", "kicad_pcb", "kicad_pos", "kicad_render")
 load("@rules_go//go:def.bzl", "go_test")
-load("//fab:defs.bzl", "determinism_test", "fab_assembly_swatch")
+load("//fab:defs.bzl", "ASSEMBLY_MODEL_LIBRARIES", "determinism_test", "fab_assembly_swatch", "fab_package", "fab_package_test")
 load("//tests/fab_rules:fails_test.bzl", "fails_test")
 
 [
@@ -17,7 +17,12 @@ load("//tests/fab_rules:fails_test.bzl", "fails_test")
         kicad_erc_test(
             name = vendor + "_erc_test",
             size = "small",
-            schematic = ":" + vendor,
+            schematic = ":%s_schematic" % vendor,
+        ),
+        kicad_drc_test(
+            name = vendor + "_drc_test",
+            size = "small",
+            pcb = ":" + vendor,
         ),
         kicad_bom(
             name = vendor + "_bom",
@@ -47,13 +52,92 @@ load("//tests/fab_rules:fails_test.bzl", "fails_test")
                 "MPN",
                 "Manufacturer",
             ],
-            schematic = ":" + vendor,
+            schematic = ":%s_schematic" % vendor,
         ),
         determinism_test(
             name = vendor + "_determinism_test",
             size = "small",
             target = ":%s_files" % vendor,
         ),
+        kicad_gerbers(
+            name = vendor + "_gerbers",
+            pcb = ":" + vendor,
+        ),
+        kicad_drill(
+            name = vendor + "_drill",
+            pcb = ":" + vendor,
+        ),
+        kicad_pos(
+            name = vendor + "_pos",
+            pcb = ":" + vendor,
+        ),
+        fab_package(
+            name = vendor + "_package",
+            board_name = vendor,
+            bom = ":%s_bom" % vendor,
+            drill = ":%s_drill" % vendor,
+            gerbers = ":%s_gerbers" % vendor,
+            pos = ":%s_pos" % vendor,
+            vendor = vendor,
+        ),
+        fab_package_test(
+            name = vendor + "_package_test",
+            size = "small",
+            package = ":%s_package" % vendor,
+            vendor = vendor,
+        ),
+        determinism_test(
+            name = vendor + "_package_determinism_test",
+            size = "small",
+            target = ":%s_package" % vendor,
+        ),
+        # Both sides, with the parts' 3D models (attached to the PR).
+        kicad_render(
+            name = vendor + "_render",
+            models = ["@kicad_models//:" + lib for lib in ASSEMBLY_MODEL_LIBRARIES],
+            pcb = ":" + vendor,
+        ),
+        determinism_test(
+            name = vendor + "_render_determinism_test",
+            size = "small",
+            target = ":%s_render" % vendor,
+        ),
+        # The count check: the same board with the vendor's rules alone.
+        # Its DRC finds only silk_overlap, as many as the generator counted
+        # pairs of a footprint's own silkscreen and its own pad
+        # (silk_pairs_test).
+        kicad_pcb(
+            name = vendor + "_vendor_rules",
+            board = ":%s.kicad_pcb" % vendor,
+            design_rules = ":%s_rules" % vendor,
+            project = ":%s.kicad_pro" % vendor,
+            schematic = ":%s_schematic" % vendor,
+        ),
+        kicad_drc_report(
+            name = vendor + "_vendor_rules_drc",
+            pcb = ":%s_vendor_rules" % vendor,
+        ),
+        # Known bad (spec T3): the first rung's label on its first measured
+        # pad, and a silkscreen line 0.12 mm from it. The extra rule covers
+        # footprints' own silkscreen only, so DRC finds silk_overlap under
+        # the vendor's own clearance for both (silk_pairs_test).
+        [
+            [
+                fab_assembly_swatch(
+                    name = "%s_%s" % (vendor, bad),
+                    bad = bad,
+                    vendor = vendor,
+                ),
+                kicad_drc_report(
+                    name = "%s_%s_drc" % (vendor, bad),
+                    pcb = ":%s_%s" % (vendor, bad),
+                ),
+            ]
+            for bad in [
+                "label_on_pad",
+                "silk_near_pad",
+            ]
+        ],
     ]
     for vendor in [
         "jlcpcb",
@@ -105,4 +189,32 @@ fails_test(
     size = "small",
     message = "start \"0101\": want one of",
     target_under_test = ":unknown_start",
+)
+
+go_test(
+    name = "silk_pairs_test",
+    size = "small",
+    srcs = ["silk_pairs_test.go"],
+    args = [
+        "--jlcpcb_pairs=$(rlocationpath :jlcpcb_silk_pairs.json)",
+        "--jlcpcb_drc=$(rlocationpath :jlcpcb_vendor_rules_drc)",
+        "--pcbway_pairs=$(rlocationpath :pcbway_silk_pairs.json)",
+        "--pcbway_drc=$(rlocationpath :pcbway_vendor_rules_drc)",
+        "--jlcpcb_label=$(rlocationpath :jlcpcb_label_on_pad_drc)",
+        "--pcbway_label=$(rlocationpath :pcbway_label_on_pad_drc)",
+        "--jlcpcb_near=$(rlocationpath :jlcpcb_silk_near_pad_drc)",
+        "--pcbway_near=$(rlocationpath :pcbway_silk_near_pad_drc)",
+    ],
+    data = [
+        ":jlcpcb_label_on_pad_drc",
+        ":jlcpcb_silk_near_pad_drc",
+        ":jlcpcb_silk_pairs.json",
+        ":jlcpcb_vendor_rules_drc",
+        ":pcbway_label_on_pad_drc",
+        ":pcbway_silk_near_pad_drc",
+        ":pcbway_silk_pairs.json",
+        ":pcbway_vendor_rules_drc",
+    ],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
 )

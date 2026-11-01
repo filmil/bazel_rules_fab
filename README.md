@@ -123,7 +123,7 @@ multimeter shows whether it was soldered (issue #32):
 | SOT-23 | BAV99 (Nexperia) | about 0.6 V, pin 1 (+) to pin 3 |
 | SOIC-8 | NE5532 (Texas Instruments) | about 0.6 V, either way between pins 3 and 2 |
 | TSSOP-16, 0.65 mm | 74HC595PW (Nexperia) | about 0.6 V, pin 8 (+, GND) to pin 14 |
-| QFN-16, 0.5 mm | 74HC595BQ (Nexperia) | about 0.6 V, pin 8 (+, GND) to pin 14 |
+| QFN-16, 0.5 mm | TLV9064IRTER (Texas Instruments) | about 0.6 V, pin 10 (+, IN3+) to pin 2 (V+) |
 | LQFP-48, 0.5 mm | STM32F030C8T6 (ST) | about 0.6 V, pin 23 (+, VSS) to pin 10 |
 
 Each part is a catalog part, with its LCSC number, MPN, manufacturer and
@@ -143,20 +143,42 @@ are in `ASSEMBLY_VENDORS`, and leave out what the vendor cannot place:
 
 ```starlark
 load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
-load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_erc_test")
+load("@hdlf_rules_kicad//kicad:defs.bzl", "kicad_drc_test", "kicad_erc_test")
 
 fab_assembly_swatch(
     name = "jlcpcb_assembly",
     vendor = "jlcpcb",
 )
 
+kicad_drc_test(
+    name = "jlcpcb_assembly_drc_test",
+    pcb = ":jlcpcb_assembly",
+)
+
 kicad_erc_test(
     name = "jlcpcb_assembly_erc_test",
-    schematic = ":jlcpcb_assembly",
+    schematic = ":jlcpcb_assembly_schematic",
 )
 ```
 
-The schematic is here; its board and package follow.
+`jlcpcb_assembly` is the board, a card like `fab_swatch`'s: each part's
+footprint is KiCad's own, as it is, and its two test points sit straight
+out from the measured pads, each on one short track. The silkscreen
+names each rung and its reading, and marks the meter's + and - pads.
+The board passes DRC with the vendor's rules and schematic parity, and
+makes a package with `fab_package` (the BOM with LCSC numbers, and the
+placement list) that passes `fab_package_test`.
+`ASSEMBLY_MODEL_LIBRARIES` lists the 3D model libraries of its parts,
+for `kicad_render(models = ...)`.
+
+KiCad's footprints draw their silkscreen 0.10 mm (an 0402) to 0.14 mm
+(a test point) from their own pads, under the vendors' 0.15 mm
+(kicad-druid's rule "Pad to Silkscreen"); the fab clips silkscreen off
+pads. So the board's rules are the vendor's, as they are, and one rule
+after them: a footprint's silkscreen may come 0.09 mm from its own pads.
+Everything else, the generator's labels among it, keeps the vendor's
+0.15 mm; the tests show that a label on a pad, and a silkscreen line
+0.12 mm from one, still fail.
 
 ## Building
 

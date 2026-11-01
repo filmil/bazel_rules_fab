@@ -58,7 +58,7 @@ var ladder = map[string]string{
 	"C2500":   "BAV99,215",
 	"C7426":   "NE5532DR",
 	"C5948":   "74HC595PW,118",
-	"C730243": "74HC595BQ,115",
+	"C882406": "TLV9064IRTER",
 	"C23922":  "STM32F030C8T6",
 }
 
@@ -88,12 +88,12 @@ func check(t *testing.T, name string, got map[string]map[string]string, want []s
 func TestJLCPCB(t *testing.T) {
 	// Economic PCBA: from 0402, so no 0201.
 	got := rows(t, *jlcpcb)
-	check(t, "jlcpcb", got, []string{"C11702", "C21190", "C17513", "C4410", "C2500", "C7426", "C5948", "C730243", "C23922"})
+	check(t, "jlcpcb", got, []string{"C11702", "C21190", "C17513", "C4410", "C2500", "C7426", "C5948", "C882406", "C23922"})
 	if _, ok := got["C270365"]; ok {
 		t.Error("jlcpcb: the 0201 resistor is in the BOM")
 	}
 }
 
 func TestPCBWay(t *testing.T) {
-	check(t, "pcbway", rows(t, *pcbway), []string{"C270365", "C11702", "C21190", "C17513", "C4410", "C2500", "C7426", "C5948", "C730243", "C23922"})
+	check(t, "pcbway", rows(t, *pcbway), []string{"C270365", "C11702", "C21190", "C17513", "C4410", "C2500", "C7426", "C5948", "C882406", "C23922"})
 }

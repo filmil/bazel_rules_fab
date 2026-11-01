@@ -281,7 +281,7 @@ determinism_test(
 <pre>
 load("@hdlf_rules_fab//fab:defs.bzl", "fab_assembly_swatch")
 
-fab_assembly_swatch(<a href="#fab_assembly_swatch-name">name</a>, <a href="#fab_assembly_swatch-vendor">vendor</a>, <a href="#fab_assembly_swatch-start">start</a>, <a href="#fab_assembly_swatch-kwargs">**kwargs</a>)
+fab_assembly_swatch(<a href="#fab_assembly_swatch-name">name</a>, <a href="#fab_assembly_swatch-vendor">vendor</a>, <a href="#fab_assembly_swatch-start">start</a>, <a href="#fab_assembly_swatch-bad">bad</a>, <a href="#fab_assembly_swatch-kwargs">**kwargs</a>)
 </pre>
 
 An assembly swatch: a ladder of real parts, each between two test points.
@@ -292,9 +292,14 @@ fab_assembly_swatch(
     vendor = "jlcpcb",
 )
 
+kicad_drc_test(
+    name = "jlcpcb_assembly_drc_test",
+    pcb = ":jlcpcb_assembly",
+)
+
 kicad_erc_test(
     name = "jlcpcb_assembly_erc_test",
-    schematic = ":jlcpcb_assembly",
+    schematic = ":jlcpcb_assembly_schematic",
 )
 ```
 
@@ -307,23 +312,48 @@ leave out what it cannot place: JLCPCB's Economic PCBA starts at 0402.
 
 Each part's two measured pins go to two test points, so a meter shows
 whether it was soldered: 1.00 kOhm on a resistor, a diode drop of about
-0.6 V on an IC, across a diode its datasheet documents. Its other pins
-carry no-connect flags, and a net with a power input pin has a
-PWR_FLAG, so ERC passes. The fields carry LCSC, MPN and Manufacturer
-for the BOM.
+0.6 V on an IC, across a diode its datasheet documents. In the
+schematic, its other pins carry no-connect flags, and a net with a
+power input pin has a PWR_FLAG, so ERC passes. The fields carry LCSC,
+MPN and Manufacturer for the BOM.
+
+The board is a 2-layer card of 85.60 x 53.98 mm, as `fab_swatch`'s,
+with the vendor's rules for 2L-1oz. Each part's footprint is KiCad's
+own, from @kicad_libs, as it is; its test points
+(TestPoint_Pad_D1.5mm, 1.5 mm pads) sit straight out from the
+measured pads, past the courtyard, each on one short track. The
+silkscreen names each rung and its reading ("0402  1.00k 1%"), and
+marks the meter's + and - test points. The parts' references stay on
+the fabrication layer. The footprints' pairing with the symbols is
+checked by DRC's schematic parity.
+
+KiCad's footprints draw their silkscreen closer to their own pads (an
+0402's 0.10 mm, a test point's 0.14 mm) than the vendors'
+pad-to-silkscreen clearance (0.15 mm; kicad-druid's rule "Pad to
+Silkscreen"); the fab clips silkscreen off pads. So the board's design
+rules are the vendor's, as they are, and one rule after them: a
+footprint's silkscreen may come 0.09 mm from its own pads. Everything
+else, the generator's labels among it, keeps the vendor's clearance.
+`<name>_silk_pairs.json`, in the package of the call, holds how many
+such pairs the board has: the violations DRC finds with the vendor's
+rules alone.
 
 Each `ASSEMBLY_PARTS` entry has `rung` (the package, such as "0402"
 or "SOT-23"), `kind` ("passive" or "ic"), `pitch_mm` for an IC,
 `symbol` and `footprint` (from @kicad_libs), `value`, `ref` (the
 reference prefix), `measure` (the two pins the test points go to),
 `reading` (what a meter shows across them), `silk` (what the board
-prints by the test pads), and `fields` (Datasheet, LCSC, MPN,
-Manufacturer, for the schematic and the BOM). Each `ASSEMBLY_VENDORS` entry has `name`,
+prints for it), and `fields` (Datasheet, LCSC, MPN, Manufacturer, for
+the schematic and the BOM). Each `ASSEMBLY_VENDORS` entry has `name`,
 `tier` (the assembly service), `smallest_passive`, `min_pitch_mm`, and
 `sources` (the URLs the limits come from).
 
-`name` is a `kicad_schematic`, for `kicad_erc_test` and `kicad_bom`.
-The board and its package follow in issue #32 (b).
+`name` is a `kicad_pcb`, ready for `kicad_drc_test`, `kicad_gerbers`,
+`kicad_drill`, `kicad_pos`, `kicad_render` and `fab_package`.
+`<name>_schematic` is its `kicad_schematic`, for `kicad_erc_test` and
+`kicad_bom`; `<name>_rules` is the vendor's `fab_rules`; `<name>_files`,
+the generated schematic, board, project, board rules and pair count,
+is private.
 
 
 **PARAMETERS**
@@ -331,9 +361,10 @@ The board and its package follow in issue #32 (b).
 
 | Name  | Description | Default Value |
 | :------------- | :------------- | :------------- |
-| <a id="fab_assembly_swatch-name"></a>name |  the schematic's name.   |  none |
+| <a id="fab_assembly_swatch-name"></a>name |  the board's name.   |  none |
 | <a id="fab_assembly_swatch-vendor"></a>vendor |  the fab house: jlcpcb or pcbway.   |  none |
 | <a id="fab_assembly_swatch-start"></a>start |  the first rung (such as "0402"); by default the smallest the vendor places. A rung the vendor cannot place fails: a known-bad swatch.   |  `""` |
+| <a id="fab_assembly_swatch-bad"></a>bad |  empty, or a known-bad board that DRC must fail on silk_overlap under the vendor's own clearance: "label_on_pad" puts the first rung's label on its first measured pad; "silk_near_pad" draws a silkscreen line 0.12 mm from it, closer than the vendor's clearance, farther than the extra rule allows a footprint's own silkscreen.   |  `""` |
 | <a id="fab_assembly_swatch-kwargs"></a>kwargs |  common attributes, such as `visibility` and `tags`.   |  none |
 
 

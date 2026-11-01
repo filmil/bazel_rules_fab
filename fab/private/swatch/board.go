@@ -131,13 +131,17 @@ func (bd *board) heading(s string, x, y float64) {
 }
 
 func (bd *board) line(x1, y1, x2, y2, width float64, layer string) {
-	bd.f("\t(gr_line\n\t\t(start %s)\n\t\t(end %s)\n\t\t(stroke\n\t\t\t(width %s)\n\t\t\t(type solid)\n\t\t)\n\t\t(layer %q)\n\t\t(uuid %q)\n\t)\n",
-		xy(x1, y1), xy(x2, y2), num(width), layer, bd.uuid())
+	bd.b.WriteString(grLine(originX+x1, originY+y1, originX+x2, originY+y2, width, layer, bd.uuid()))
 }
 
-func (bd *board) arc(x1, y1, xm, ym, x2, y2 float64) {
-	bd.f("\t(gr_arc\n\t\t(start %s)\n\t\t(mid %s)\n\t\t(end %s)\n\t\t(stroke\n\t\t\t(width 0.05)\n\t\t\t(type solid)\n\t\t)\n\t\t(layer \"Edge.Cuts\")\n\t\t(uuid %q)\n\t)\n",
-		xy(x1, y1), xy(xm, ym), xy(x2, y2), bd.uuid())
+func grLine(x1, y1, x2, y2, width float64, layer, uuid string) string {
+	return fmt.Sprintf("\t(gr_line\n\t\t(start %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width %s)\n\t\t\t(type solid)\n\t\t)\n\t\t(layer %q)\n\t\t(uuid %q)\n\t)\n",
+		num(x1), num(y1), num(x2), num(y2), num(width), layer, uuid)
+}
+
+func grArc(x1, y1, xm, ym, x2, y2 float64, uuid string) string {
+	return fmt.Sprintf("\t(gr_arc\n\t\t(start %s %s)\n\t\t(mid %s %s)\n\t\t(end %s %s)\n\t\t(stroke\n\t\t\t(width 0.05)\n\t\t\t(type solid)\n\t\t)\n\t\t(layer \"Edge.Cuts\")\n\t\t(uuid %q)\n\t)\n",
+		num(x1), num(y1), num(xm), num(ym), num(x2), num(y2), uuid)
 }
 
 // copperLayers is the number of copper layers of a stackup such as
@@ -210,17 +214,29 @@ func fits(c Caps, what string, size, y, above, below float64) error {
 	return nil
 }
 
-func (bd *board) outline() {
+func (bd *board) outline() { bd.b.WriteString(Outline(originX, originY, bd.uuid)) }
+
+// Outline is the card's outline on Edge.Cuts, its top left corner at
+// (x0, y0): four sides and four corner arcs, each with the next UUID.
+func Outline(x0, y0 float64, uuid func() string) string {
 	r := CardRadius
 	k := r * (1 - math.Sqrt2/2) // a corner arc's middle, from the corner
-	bd.line(r, 0, CardW-r, 0, 0.05, "Edge.Cuts")
-	bd.line(CardW, r, CardW, CardH-r, 0.05, "Edge.Cuts")
-	bd.line(CardW-r, CardH, r, CardH, 0.05, "Edge.Cuts")
-	bd.line(0, CardH-r, 0, r, 0.05, "Edge.Cuts")
-	bd.arc(0, r, k, k, r, 0)
-	bd.arc(CardW-r, 0, CardW-k, k, CardW, r)
-	bd.arc(CardW, CardH-r, CardW-k, CardH-k, CardW-r, CardH)
-	bd.arc(r, CardH, k, CardH-k, 0, CardH-r)
+	var b strings.Builder
+	line := func(x1, y1, x2, y2 float64) {
+		b.WriteString(grLine(x0+x1, y0+y1, x0+x2, y0+y2, 0.05, "Edge.Cuts", uuid()))
+	}
+	arc := func(x1, y1, xm, ym, x2, y2 float64) {
+		b.WriteString(grArc(x0+x1, y0+y1, x0+xm, y0+ym, x0+x2, y0+y2, uuid()))
+	}
+	line(r, 0, CardW-r, 0)
+	line(CardW, r, CardW, CardH-r)
+	line(CardW-r, CardH, r, CardH)
+	line(0, CardH-r, 0, r)
+	arc(0, r, k, k, r, 0)
+	arc(CardW-r, 0, CardW-k, k, CardW, r)
+	arc(CardW, CardH-r, CardW-k, CardH-k, CardW-r, CardH)
+	arc(r, CardH, k, CardH-k, 0, CardH-r)
+	return b.String()
 }
 
 // Board returns the swatch's .kicad_pcb.
@@ -407,7 +423,7 @@ func Board(c Caps, o Options) (string, error) {
 	var out strings.Builder
 	out.WriteString("(kicad_pcb\n\t(version 20241229)\n\t(generator \"hdlf_rules_fab_swatch\")\n\t(generator_version \"9.0\")\n")
 	out.WriteString("\t(general\n\t\t(thickness 1.6)\n\t\t(legacy_teardrops no)\n\t)\n\t(paper \"A4\")\n")
-	out.WriteString(layerTable(ncu))
+	out.WriteString(LayerTable(ncu))
 	out.WriteString("\t(setup\n\t\t(pad_to_mask_clearance 0)\n\t\t(allow_soldermask_bridges_in_footprints no)\n\t\t(tenting front back)\n\t)\n")
 	out.WriteString("\t(net 0 \"\")\n")
 	for i, n := range bd.nets {
@@ -418,12 +434,12 @@ func Board(c Caps, o Options) (string, error) {
 	return out.String(), nil
 }
 
-// layerTable is the board's (layers ...): the copper layers in stack
+// LayerTable is a board's (layers ...): the copper layers in stack
 // order, F.Cu, In1.Cu to In<n-2>.Cu, B.Cu, as KiCad writes them (KiCad
 // counts the inner layers by their place before B.Cu), then the user
 // layers. KiCad 9 numbers copper layers 0 (F.Cu), 2 (B.Cu), then 4, 6,
 // ... for the inner ones.
-func layerTable(copper int) string {
+func LayerTable(copper int) string {
 	var b strings.Builder
 	b.WriteString("\t(layers\n\t\t(0 \"F.Cu\" signal)\n")
 	for i := 1; i <= copper-2; i++ {
@@ -462,17 +478,34 @@ const Netlist = "(export\n\t(version \"E\")\n\t(components)\n\t(nets)\n)\n"
 // swatch connects nothing) and footprints that are in no library are not
 // checked.
 func Project(name string) string {
+	return ProjectIgnoring(name, []string{
+		"footprint",
+		"lib_footprint_issues",
+		"lib_footprint_mismatch",
+		"missing_courtyard",
+		"track_dangling",
+		"via_dangling",
+	})
+}
+
+// ProjectIgnoring returns a .kicad_pro whose board minimums are zero, so
+// the vendor's rules alone decide, and whose DRC ignores the checks named.
+func ProjectIgnoring(name string, ignore []string) string {
+	var sev strings.Builder
+	for i, c := range ignore {
+		sep := ","
+		if i == len(ignore)-1 {
+			sep = ""
+		}
+		fmt.Fprintf(&sev, "\n        %q: \"ignore\"%s", c, sep)
+	}
+	if len(ignore) > 0 {
+		sev.WriteString("\n      ")
+	}
 	return fmt.Sprintf(`{
   "board": {
     "design_settings": {
-      "rule_severities": {
-        "footprint": "ignore",
-        "lib_footprint_issues": "ignore",
-        "lib_footprint_mismatch": "ignore",
-        "missing_courtyard": "ignore",
-        "track_dangling": "ignore",
-        "via_dangling": "ignore"
-      },
+      "rule_severities": {%s},
       "rules": {
         "max_error": 0.005,
         "min_clearance": 0.0,
@@ -515,5 +548,5 @@ func Project(name string) string {
     }
   }
 }
-`, name+".kicad_pro")
+`, sev.String(), name+".kicad_pro")
 }

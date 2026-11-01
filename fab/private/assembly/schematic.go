@@ -28,7 +28,8 @@ type Rung struct {
 	Footprint string            `json:"footprint"` // Lib:Name
 	Value     string            `json:"value"`
 	Label     string            `json:"label"`   // the rung's name, such as "0402" or "SOIC-8"
-	Reading   string            `json:"reading"` // what a meter reads, such as "1.00k 1%"
+	Reading   string            `json:"reading"` // what a meter reads, in words
+	Silk      string            `json:"silk"`    // the reading on the board, such as "1.00k 1%"
 	Measure   []string          `json:"measure"` // the two measured pins, first the meter's +
 	Fields    map[string]string `json:"fields"`  // Datasheet, LCSC, MPN, Manufacturer, ...
 }
@@ -47,6 +48,39 @@ type sch struct {
 	n       int
 	pwr     int
 	tp      int
+	// Each reference's symbol UUID (its first unit's), which the board's
+	// footprint names in its path.
+	symbols map[string]string
+	// Each reference's pins' nets, by pin number, named as KiCad names
+	// them, for the board's pads.
+	pinNets map[string]map[string]string
+}
+
+// unconnected is the name KiCad gives the net of a pin with a no-connect
+// flag: the reference, with its unit's letter and the pin's name when the
+// pin has a name, and the pin's number.
+func unconnected(ref string, unit int, multi bool, p Pin) string {
+	name := p.Name
+	if name == "~" || name == p.Number {
+		name = ""
+	}
+	if name == "" {
+		return fmt.Sprintf("unconnected-(%s-Pad%s)", ref, p.Number)
+	}
+	if multi {
+		ref += string(rune('A' + unit - 1))
+	}
+	name = strings.ReplaceAll(name, "/", "{slash}")
+	return fmt.Sprintf("unconnected-(%s-%s-Pad%s)", ref, name, p.Number)
+}
+
+func (s *sch) pinNet(ref, pin, net string) {
+	if s.pinNets[ref] == nil {
+		s.pinNets[ref] = map[string]string{}
+	}
+	if _, ok := s.pinNets[ref][pin]; !ok {
+		s.pinNets[ref][pin] = net
+	}
 }
 
 func (s *sch) uuid() string {
@@ -82,8 +116,12 @@ const (
 // symbol places one unit of a symbol with its origin at (x, y).
 func (s *sch) symbol(libID, ref, value string, unit int, x, y float64, kind int, props [][2]string, pins []Pin) {
 	yn := map[bool]string{true: "yes", false: "no"}
+	id := s.uuid()
+	if _, ok := s.symbols[ref]; !ok {
+		s.symbols[ref] = id
+	}
 	s.f("\t(symbol\n\t\t(lib_id %q)\n\t\t(at %s %s 0)\n\t\t(unit %d)\n\t\t(exclude_from_sim no)\n\t\t(in_bom %s)\n\t\t(on_board %s)\n\t\t(dnp no)\n\t\t(uuid %q)\n",
-		libID, num(x), num(y), unit, yn[kind == part], yn[kind != flag], s.uuid())
+		libID, num(x), num(y), unit, yn[kind == part], yn[kind != flag], id)
 	s.property("Reference", ref, x, y-3.81, kind == flag)
 	s.property("Value", value, x, y+3.81, kind == flag)
 	for _, p := range props {
@@ -127,10 +165,36 @@ func (ls Libraries) symbol(libID string) (*Node, error) {
 
 // Schematic returns the swatch's .kicad_sch.
 func Schematic(spec Spec, libs Libraries) (string, error) {
-	if spec.Project == "" || len(spec.Rungs) == 0 {
-		return "", fmt.Errorf("the spec needs a project and rungs")
+	out, _, err := schematic(spec, libs)
+	return out, err
+}
+
+// Design returns the swatch's .kicad_sch and its .kicad_pcb, which pair
+// up by the symbols' UUIDs, and the count of Board's silkscreen pairs.
+func Design(spec Spec, libs Libraries, fps Footprints, o BoardOptions) (string, string, int, error) {
+	s, placed, err := schematic(spec, libs)
+	if err != nil {
+		return "", "", 0, err
 	}
-	s := &sch{project: spec.Project}
+	b, n, err := Board(spec, fps, placed, o)
+	if err != nil {
+		return "", "", 0, err
+	}
+	return s, b, n, nil
+}
+
+// placed is what the board needs of the schematic: each reference's
+// symbol UUID and its pins' nets.
+type placed struct {
+	symbols map[string]string
+	pinNets map[string]map[string]string
+}
+
+func schematic(spec Spec, libs Libraries) (string, *placed, error) {
+	if spec.Project == "" || len(spec.Rungs) == 0 {
+		return "", nil, fmt.Errorf("the spec needs a project and rungs")
+	}
+	s := &sch{project: spec.Project, symbols: map[string]string{}, pinNets: map[string]map[string]string{}}
 	s.root = s.uuid()
 	embedded := map[string]*Node{}
 	embed := func(libID string) (*Node, error) {
@@ -146,38 +210,38 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 	}
 	tpSym, err := embed("Connector:TestPoint")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	tpPins, err := onePin(tpSym)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	flagSym, err := embed("power:PWR_FLAG")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	flagPins, err := onePin(flagSym)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	refs := map[string]bool{}
 
 	y := 30.0
 	for _, r := range spec.Rungs {
 		if refs[r.Ref] {
-			return "", fmt.Errorf("reference %s appears twice", r.Ref)
+			return "", nil, fmt.Errorf("reference %s appears twice", r.Ref)
 		}
 		refs[r.Ref] = true
 		if len(r.Measure) != 2 || r.Measure[0] == r.Measure[1] {
-			return "", fmt.Errorf("%s: measure needs two different pins, not %q", r.Ref, r.Measure)
+			return "", nil, fmt.Errorf("%s: measure needs two different pins, not %q", r.Ref, r.Measure)
 		}
 		sym, err := embed(r.Symbol)
 		if err != nil {
-			return "", fmt.Errorf("%s: %v", r.Ref, err)
+			return "", nil, fmt.Errorf("%s: %v", r.Ref, err)
 		}
 		units, err := Units(sym)
 		if err != nil {
-			return "", fmt.Errorf("%s: %v", r.Ref, err)
+			return "", nil, fmt.Errorf("%s: %v", r.Ref, err)
 		}
 		// The rung's height: the tallest unit's pin span.
 		top, bottom := 0.0, 0.0
@@ -218,7 +282,7 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 				if net, ok := nets[p.Number]; ok {
 					found[p.Number] = true
 					if other, ok := netAt[at]; ok && other != net {
-						return "", fmt.Errorf("%s: pins %s and %s are stacked", r.Ref, r.Measure[0], r.Measure[1])
+						return "", nil, fmt.Errorf("%s: pins %s and %s are stacked", r.Ref, r.Measure[0], r.Measure[1])
 					}
 					if _, ok := netAt[at]; !ok {
 						s.label(net, at.x, at.y)
@@ -226,23 +290,30 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 					netAt[at] = net
 				}
 			}
-			done := map[pt]bool{}
+			done := map[pt]string{}
 			for _, p := range pins {
 				at := pt{grid(x + p.X), grid(oy - p.Y)}
 				if net, ok := netAt[at]; ok {
 					if p.Type == "power_in" {
 						powerOn[net] = true
 					}
-				} else if !done[at] {
+					// A local label's net is named from the root sheet.
+					s.pinNet(r.Ref, p.Number, "/"+net)
+				} else if name, ok := done[at]; ok {
+					// Stacked unused pins share the first one's net.
+					s.pinNet(r.Ref, p.Number, name)
+				} else {
 					s.noConnect(at.x, at.y)
-					done[at] = true
+					name := unconnected(r.Ref, u, len(units) > 1, p)
+					done[at] = name
+					s.pinNet(r.Ref, p.Number, name)
 				}
 			}
 			x += 63.5
 		}
 		for _, m := range r.Measure {
 			if !found[m] {
-				return "", fmt.Errorf("%s: %s has no pin %q", r.Ref, r.Symbol, m)
+				return "", nil, fmt.Errorf("%s: %s has no pin %q", r.Ref, r.Symbol, m)
 			}
 		}
 		// The two test points, and a PWR_FLAG on a net with a power input.
@@ -255,6 +326,7 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 			s.symbol("Connector:TestPoint", ref, nets[m], 1, tx, ty, testPoint,
 				[][2]string{{"Footprint", "TestPoint:TestPoint_Pad_D1.5mm"}}, tpPins)
 			s.label(nets[m], grid(tx+tpPin.X), grid(ty-tpPin.Y))
+			s.pinNet(ref, tpPin.Number, "/"+nets[m])
 			if powerOn[nets[m]] {
 				s.pwr++
 				fx := tx + 25.4
@@ -282,7 +354,7 @@ func Schematic(spec Spec, libs Libraries) (string, error) {
 	out.WriteString("\t)\n")
 	out.WriteString(s.b.String())
 	out.WriteString("\t(sheet_instances\n\t\t(path \"/\"\n\t\t\t(page \"1\")\n\t\t)\n\t)\n\t(embedded_fonts no)\n)\n")
-	return out.String(), nil
+	return out.String(), &placed{s.symbols, s.pinNets}, nil
 }
 
 // onePin returns the pins of a one-unit symbol with one pin, such as a

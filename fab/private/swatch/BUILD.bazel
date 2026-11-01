@@ -10,7 +10,7 @@ go_library(
         "rules.go",
     ],
     importpath = "github.com/filmil/bazel_rules_fab/fab/private/swatch",
-    visibility = ["//visibility:private"],
+    visibility = ["//fab/private/assembly:__subpackages__"],
 )
 
 go_test(

@@ -14,6 +14,7 @@ entry point; everything under `//fab/private` may change without notice.
 
 load(
     "//fab/private:assembly.bzl",
+    _ASSEMBLY_MODEL_LIBRARIES = "ASSEMBLY_MODEL_LIBRARIES",
     _ASSEMBLY_PARTS = "ASSEMBLY_PARTS",
     _ASSEMBLY_VENDORS = "ASSEMBLY_VENDORS",
     _fab_assembly_swatch = "fab_assembly_swatch",
@@ -26,6 +27,7 @@ load("//fab/private:swap_test.bzl", _swap_test = "swap_test")
 load("//fab/private:swatch.bzl", _SWATCH_BELOW = "SWATCH_BELOW", _fab_swatch = "fab_swatch")
 load("//fab/private:toolchains.bzl", _tool_toolchain = "tool_toolchain")
 
+ASSEMBLY_MODEL_LIBRARIES = _ASSEMBLY_MODEL_LIBRARIES
 ASSEMBLY_PARTS = _ASSEMBLY_PARTS
 ASSEMBLY_VENDORS = _ASSEMBLY_VENDORS
 fab_assembly_swatch = _fab_assembly_swatch
