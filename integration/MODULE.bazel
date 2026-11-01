@@ -22,16 +22,9 @@ local_path_override(
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
 
 # hdlf_rules_fab's own override does not reach this module: overrides apply in
-# the root module only. The same pinned commit of hdlf_rules_kicad (issue #7).
-bazel_dep(name = "hdlf_rules_kicad", version = "0.0.0")
-
-# The same pin as MODULE.bazel and README.md; change all three together.
-archive_override(
-    module_name = "hdlf_rules_kicad",
-    integrity = "sha256-46jre2ndNDzCLSCl8vCHchOngJMCRWuO2zdDKuFB/Ew=",
-    strip_prefix = "bazel_rules_kicad-9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414",
-    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414.tar.gz"],
-)
+# hdlf_rules_kicad, from the filmil registry (.bazelrc), the version
+# hdlf_rules_fab needs.
+bazel_dep(name = "hdlf_rules_kicad", version = "0.0.1")
 
 # KiCad's standard symbol and footprint libraries, for the e2e design.
 kicad = use_extension("@hdlf_rules_kicad//kicad:extensions.bzl", "kicad")
