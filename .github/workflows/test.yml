@@ -122,13 +122,14 @@ jobs:
           grep -F "hdlf_rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
 
   # Advisory: whether every dependency resolves from the published
-  # registries, the filmil registry first and then the BCR, with no local
-  # override. Tag and Release requires this; a pull request does not, so a
-  # pull request may pin a dependency that is not published yet.
+  # registries, the filmil registry first and then the BCR, with no flag
+  # from .bazelrc (--ignore_all_rc_files). Tag and Release requires this; a
+  # pull request does not, so a pull request may pin a dependency that is
+  # not published yet.
   #
-  # Only the two checks may fail; a broken setup (bazelisk, checkout) still
+  # Only the checks may fail; a broken setup (bazelisk, checkout) still
   # fails the job.
-  bcr-ready:
+  registry-ready:
     runs-on: ubuntu-latest
     container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
     strategy:

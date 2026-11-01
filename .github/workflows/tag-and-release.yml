@@ -68,8 +68,8 @@ jobs:
   # one: a release waits for that, before anything is tagged. It does not
   # wait for the BCR alone: hdlf_rules_kicad is in the filmil registry first,
   # and the BCR's review takes days (operator, 2026-11-01). Pull requests do
-  # not wait (Test's bcr-ready job is advisory).
-  bcr_ready:
+  # not wait (Test's registry-ready job is advisory).
+  registry_ready:
     needs: check
     if: ${{ needs.check.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
@@ -115,7 +115,7 @@ jobs:
           bazel run //tools/nooverrides -- --allow_local_path=hdlf_rules_fab "${PWD}/integration"
 
   tag:
-    needs: [check, bcr_ready]
+    needs: [check, registry_ready]
     if: ${{ needs.check.outputs.changed == 'true' }}
     runs-on: ubuntu-latest
     permissions:
