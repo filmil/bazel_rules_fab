@@ -23,9 +23,13 @@ Only Linux x86_64 hosts are supported.
 
 ```starlark
 bazel_dep(name = "hdlf_rules_fab", version = "0.0.1")
+bazel_dep(name = "hdlf_rules_kicad", version = "0.0.1")
 ```
 
-hdlf_rules_fab brings hdlf_rules_kicad (0.0.1) with it.
+hdlf_rules_fab depends on hdlf_rules_kicad itself. Your module names it
+too because its BUILD files load hdlf_rules_kicad's rules (`kicad_pcb`,
+`kicad_drc_test`, as below), and a module sees only the repositories it
+names.
 
 `.bazelrc`, while the module is only in the filmil registry:
 
