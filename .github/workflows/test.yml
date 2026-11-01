@@ -110,7 +110,7 @@ jobs:
       # host PATH or HOME in actions, unsandboxed tags, and exception tags
       # not on the allowlist.
       - name: Hermeticity lint
-        run: bazel run //tools/lint
+        run: bazel run //tools:lint
 
       # Spec P1: on another host, analysis fails and says which host works.
       - name: Unsupported host fails with a clear message

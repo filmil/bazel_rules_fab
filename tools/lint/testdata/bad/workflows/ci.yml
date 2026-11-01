@@ -1,4 +1,0 @@
-jobs:
-  test:
-    steps:
-      - run: bazel test --action_env=PATH=/usr/bin //...
