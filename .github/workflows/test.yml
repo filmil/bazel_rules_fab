@@ -121,16 +121,15 @@ jobs:
           fi
           grep -F "hdlf_rules_fab v1 supports only Linux x86_64 hosts" "${HOME}/p1.log"
 
-  # Advisory: whether every dependency already resolves from the BCR alone.
-  # The BCR rejects a module whose dependencies are only in the filmil
-  # registry, so Tag and Release requires this; a pull request does not.
-  # A dependency new in the filmil registry can wait days for BCR review,
-  # and hdlf_rules_kicad is not in any registry yet (issue #7); the rules' work
-  # goes on meanwhile.
+  # Advisory: whether every dependency resolves from the published
+  # registries, the filmil registry first and then the BCR, with no flag
+  # from .bazelrc (--ignore_all_rc_files). Tag and Release requires this; a
+  # pull request does not, so a pull request may pin a dependency that is
+  # not published yet.
   #
-  # Only the two checks may fail; a broken setup (bazelisk, checkout) still
+  # Only the checks may fail; a broken setup (bazelisk, checkout) still
   # fails the job.
-  bcr-ready:
+  registry-ready:
     runs-on: ubuntu-latest
     container: buildpack-deps:bullseye-curl@sha256:7c8d79c31eb106cca055357456a2fa89b10fa20f254da6fe3eca937439696c62
     strategy:
@@ -151,16 +150,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Dependencies resolve from the BCR alone
+      - name: Dependencies resolve from the filmil registry and the BCR
         id: root
         continue-on-error: true
-        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+        run: bazel --ignore_all_rc_files mod graph --registry=https://raw.githubusercontent.com/filmil/bazel-registry/main --registry=https://bcr.bazel.build > /dev/null
 
-      - name: Integration dependencies resolve from the BCR alone
+      - name: Integration dependencies resolve from the filmil registry and the BCR
         id: integration
         continue-on-error: true
         working-directory: integration
-        run: bazel --ignore_all_rc_files mod graph --registry=https://bcr.bazel.build > /dev/null
+        run: bazel --ignore_all_rc_files mod graph --registry=https://raw.githubusercontent.com/filmil/bazel-registry/main --registry=https://bcr.bazel.build > /dev/null
 
       # An override bypasses the registry, so the two checks above can pass
       # with one; the same check as Tag and Release.
