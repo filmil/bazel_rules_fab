@@ -90,5 +90,9 @@ register_toolchains(
 )
 
 bazel_dep(name = "bazel_lib", version = "3.7.2", dev_dependency = True)
+
+# The hermeticity lint (bazel run //tools:lint), shared by the hdlf_rules
+# modules: https://github.com/filmil/bazel_hdlf_tools.
+bazel_dep(name = "hdlf_tools", version = "0.0.1", dev_dependency = True)
 bazel_dep(name = "buildifier_prebuilt", version = "10.1.0", dev_dependency = True)
 bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
