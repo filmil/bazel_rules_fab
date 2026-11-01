@@ -216,14 +216,16 @@ tool_toolchain(<a href="#tool_toolchain-name">name</a>, <a href="#tool_toolchain
 
 A toolchain that offers tools by name, for `run_tool`.
 
-It is for a toolchain type of your own: a rule of yours that runs a tool
-through `run_tool` names that type, and a `tool_toolchain` provides the
-tool. This module's own tools (`packager`, `swatch`, `assembly`) come
-from its helpers toolchain instead, which also brings the launcher that
-every action runs through; a `tool_toolchain` cannot stand in for it.
+It serves rules that start their actions through this module's
+`run_tool`, which is private (`//fab/private`). Today those are this
+module's own test templates: the swap test template, whose toy tool has a
+real toolchain and a stub one, and the determinism test's demo. A user of
+the module has no use for it yet. This module's tools (`packager`,
+`swatch`, `assembly`) come from its helpers toolchain instead, which also
+brings the launcher every action runs through; a `tool_toolchain` cannot
+stand in for it.
 
-Example, as in this module's swap test template
-(`//fab/private/swapdemo`):
+Its shape, as the swap test template uses it:
 
 ```starlark
 toolchain_type(name = "echo_toolchain_type")
