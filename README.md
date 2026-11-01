@@ -14,9 +14,6 @@ vendor design rules for the KiCad DRC.
 Every tool comes from a Bazel toolchain, so nothing needs to be installed
 on the machine, and two builds give byte-identical outputs.
 
-This repository is new. The rules arrive in milestones; see the
-[issues](https://github.com/filmil/bazel_rules_fab/issues) and the
-[milestones](https://github.com/filmil/bazel_rules_fab/milestones).
 Only Linux x86_64 hosts are supported.
 
 ## Using it

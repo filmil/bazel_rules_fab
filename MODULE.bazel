@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 module(
     name = "hdlf_rules_fab",
+    # The release writes its own version into the registry's copy of this
+    # file (publish-to-bcr); in the repository it stays 0.0.0.
     version = "0.0.0",
     bazel_compatibility = [">=8.0.0"],
 )
