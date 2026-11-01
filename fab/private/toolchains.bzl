@@ -84,19 +84,29 @@ tool_toolchain = rule(
     implementation = _tool_toolchain_impl,
     doc = """A toolchain that offers tools by name, for `run_tool`.
 
-Example, a toolchain for another build of the fab packager (the toolchain
-type arrives with this module's toolchain issue):
+It serves rules that start their actions through this module's
+`run_tool`, which is private (`//fab/private`). Today those are this
+module's own test templates: the swap test template, whose toy tool has a
+real toolchain and a stub one, and the determinism test's demo. A user of
+the module has no use for it yet. This module's tools (`packager`,
+`swatch`, `assembly`) come from its helpers toolchain instead, which also
+brings the launcher every action runs through; a `tool_toolchain` cannot
+stand in for it.
+
+Its shape, as the swap test template uses it:
 
 ```starlark
+toolchain_type(name = "echo_toolchain_type")
+
 tool_toolchain(
-    name = "my_packager_impl",
-    tools = {"//third_party/packager:packager": "packager"},
+    name = "echo_impl",
+    tools = {":my_echo": "echo"},
 )
 
 toolchain(
-    name = "my_packager",
-    toolchain = ":my_packager_impl",
-    toolchain_type = "@hdlf_rules_fab//fab:toolchain_type",
+    name = "echo",
+    toolchain = ":echo_impl",
+    toolchain_type = ":echo_toolchain_type",
 )
 ```
 """,

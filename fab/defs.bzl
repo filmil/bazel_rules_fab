@@ -4,12 +4,21 @@
 Load every rule from this file:
 
 ```starlark
-load("@hdlf_rules_fab//fab:defs.bzl", "determinism_test", "swap_test", "tool_toolchain")
+load(
+    "@hdlf_rules_fab//fab:defs.bzl",
+    "fab_assembly_swatch",
+    "fab_package",
+    "fab_package_test",
+    "fab_rules",
+    "fab_swatch",
+)
 ```
 
-The rules arrive in milestone M3 (see the issues of
-https://github.com/filmil/bazel_rules_fab). This file is the only public
-entry point; everything under `//fab/private` may change without notice.
+It also has `determinism_test`, `swap_test`, `tool_toolchain`, and the
+constants `FAB_PACKAGE_VENDORS`, `FAB_STACKUPS`, `ASSEMBLY_VENDORS`,
+`ASSEMBLY_PARTS`, `ASSEMBLY_MODEL_LIBRARIES` and `SWATCH_BELOW`. This file
+is the only public entry point; everything under `//fab/private` may
+change without notice.
 """
 
 load(
