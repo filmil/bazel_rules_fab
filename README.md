@@ -22,26 +22,14 @@ Only Linux x86_64 hosts are supported.
 ## Using it
 
 ```starlark
-bazel_dep(name = "hdlf_rules_fab", version = "0.1.0")
+bazel_dep(name = "hdlf_rules_fab", version = "0.0.1")
+bazel_dep(name = "hdlf_rules_kicad", version = "0.0.1")
 ```
 
-That is for a release. hdlf_rules_fab builds on hdlf_rules_kicad, which is in no
-registry yet, and no release of hdlf_rules_fab is made until it is (issue #7).
-To use hdlf_rules_fab meanwhile, pin a commit of it with an
-`archive_override(module_name = "hdlf_rules_fab", ...)` of GitHub's archive of
-that commit, and pin hdlf_rules_kicad as hdlf_rules_fab does, in your `MODULE.bazel`
-(an override counts only in the root module). Each is an archive checked
-by its hash, so the build needs no `git` on the host:
-
-```starlark
-bazel_dep(name = "hdlf_rules_kicad", version = "0.0.0")
-archive_override(
-    module_name = "hdlf_rules_kicad",
-    integrity = "sha256-46jre2ndNDzCLSCl8vCHchOngJMCRWuO2zdDKuFB/Ew=",
-    strip_prefix = "bazel_rules_kicad-9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414",
-    urls = ["https://github.com/filmil/bazel_rules_kicad/archive/9acaa9cbdcdf4b99a1e9b0ee0af79f1fc682f414.tar.gz"],
-)
-```
+hdlf_rules_fab depends on hdlf_rules_kicad itself. Your module names it
+too because its BUILD files load hdlf_rules_kicad's rules (`kicad_pcb`,
+`kicad_drc_test`, as below), and a module sees only the repositories it
+names.
 
 `.bazelrc`, while the module is only in the filmil registry:
 
