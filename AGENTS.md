@@ -32,13 +32,21 @@ the change.
    `bazel run //:update_goldens`, and give the reason in the commit
    message.
 5. A change to a package layout lists the files and columns of the
-   package before and after in the pull request.
+   package before and after in the pull request. A change to a swatch
+   board (`fab_swatch`, `fab_assembly_swatch` or their generators)
+   attaches the `kicad_render` PNGs of both sides of each board it
+   changes: push them to a branch `pr-assets/<the PR's branch>` of this
+   repository, link them from the pull request by their
+   `raw.githubusercontent.com` URLs at that branch's commit, and ask the
+   operator to delete the branch after the merge.
 6. One logical change per pull request: one rule, one feature, or one
    design change.
 7. Stop and ask the operator before you:
    * change or remove a DRC or fab rule file;
    * delete a test, or make a tolerance larger;
-   * change a toolchain version or a library version;
+   * change a toolchain version or a library version (the pull request
+     also updates the version wherever `README.md` names it: under
+     Licenses, and in its examples, such as the `hdlf_rules_kicad` pin);
    * run a release or publish workflow, or set a secret.
 8. When a test fails and the cause is not clear after three attempts, stop.
    Write the failure and your hypotheses in the pull request.
