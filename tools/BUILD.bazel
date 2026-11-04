@@ -2,12 +2,11 @@
 # Development tools. They use the module's dev dependencies, so they live
 # apart from the packages a user of the module loads.
 load("@buildifier_prebuilt//:rules.bzl", "buildifier")
+load("@hdlf_tools//tools/lint:defs.bzl", "hermetic_lint")
 
 # bazel run //tools:buildifier
 buildifier(
     name = "buildifier",
-    # Lint fixtures are deliberately bad; formatting would move their lines.
-    exclude_patterns = ["./tools/lint/testdata/*"],
     lint_mode = "warn",
     mode = "fix",
 )
@@ -15,8 +14,6 @@ buildifier(
 # bazel run //tools:buildifier_check: fails on any file that is not formatted.
 buildifier(
     name = "buildifier_check",
-    # Lint fixtures are deliberately bad; formatting would move their lines.
-    exclude_patterns = ["./tools/lint/testdata/*"],
     lint_mode = "warn",
     mode = "check",
 )
@@ -25,4 +22,12 @@ buildifier(
 alias(
     name = "mirror",
     actual = "//tools/mirror",
+)
+
+# bazel run //tools:lint: the hermeticity lint (hdlf_tools) on the whole
+# tree, integration/ included. The allowlist is
+# tools/lint/hermetic_exceptions.txt.
+hermetic_lint(
+    name = "lint",
+    run_tool = "fab/private/run_tool.bzl",
 )

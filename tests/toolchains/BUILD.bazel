@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# tool_toolchain fails analysis on a tool name given twice, and on a target
+# that is not executable.
+load("@rules_go//go:def.bzl", "go_binary")
+load("//fab:defs.bzl", "tool_toolchain")
+load("//tests/fab_rules:fails_test.bzl", "fails_test")
+
+go_binary(
+    name = "a",
+    srcs = ["main.go"],
+    pure = "on",
+)
+
+go_binary(
+    name = "b",
+    srcs = ["main.go"],
+    pure = "on",
+)
+
+# No file at all, so no executable. (A filegroup of one file counts as
+# executable: Bazel takes the file.)
+filegroup(
+    name = "not_a_tool",
+    srcs = [],
+)
+
+tool_toolchain(
+    name = "name_twice",
+    tags = ["manual"],
+    tools = {
+        ":a": "x",
+        ":b": "x",
+    },
+)
+
+fails_test(
+    name = "name_twice_test",
+    size = "small",
+    message = "tool name \"x\" appears twice",
+    target_under_test = ":name_twice",
+)
+
+tool_toolchain(
+    name = "not_executable",
+    tags = ["manual"],
+    tools = {":not_a_tool": "x"},
+)
+
+fails_test(
+    name = "not_executable_test",
+    size = "small",
+    message = "is not executable",
+    target_under_test = ":not_executable",
+)
