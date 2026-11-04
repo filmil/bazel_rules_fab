@@ -41,11 +41,11 @@ helpers_toolchain = rule(
           "fab_package's packager, fab_package_test's checker and fab_swatch's generator.",
     attrs = {
         "launcher": attr.label(mandatory = True, executable = True, cfg = "exec"),
-        "swapcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
-        "compare": attr.label(mandatory = True, executable = True, cfg = "target"),
+        "swapcheck": attr.label(mandatory = True, executable = True, cfg = "exec"),
+        "compare": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "packager": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "assembly": attr.label(mandatory = True, executable = True, cfg = "exec"),
-        "pkgcheck": attr.label(mandatory = True, executable = True, cfg = "target"),
+        "pkgcheck": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "swatch": attr.label(mandatory = True, executable = True, cfg = "exec"),
     },
 )
