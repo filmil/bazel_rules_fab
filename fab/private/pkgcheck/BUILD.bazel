@@ -7,7 +7,8 @@ go_library(
     name = "pkgcheck",
     srcs = ["pkgcheck.go"],
     importpath = "github.com/filmil/bazel_rules_fab/fab/private/pkgcheck",
-    visibility = ["//visibility:private"],
+    # fab_report's tool lists the same checks.
+    visibility = ["//fab/private/report:__pkg__"],
 )
 
 go_test(

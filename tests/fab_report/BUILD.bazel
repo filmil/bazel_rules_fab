@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# fab_report (issue #43). board/ is a small board written by hand in the
+# form KiCad 9 writes: pads (C, R and KiCad's RoundRect macro), tracks,
+# vias, an arc in the outline, a silkscreen region, plated and unplated
+# holes and a slot. Its reports, for both vendors and as a bare board; the
+# report of //tests/fab_package's empty fixture files; the same bytes in two
+# configurations.
+load("@rules_go//go:def.bzl", "go_test")
+load("//fab:defs.bzl", "determinism_test", "fab_package", "fab_report")
+load("//tests/fab_rules:fails_test.bzl", "fails_test")
+
+filegroup(
+    name = "gerbers",
+    srcs = glob(["board/gerbers/*"]),
+)
+
+[
+    fab_package(
+        name = vendor,
+        board_name = "main",
+        bom = "board/bom.csv",
+        drill = "board/drill/main.drl",
+        gerbers = ":gerbers",
+        pos = "board/pos.csv",
+        vendor = vendor,
+    )
+    for vendor in [
+        "jlcpcb",
+        "pcbway",
+    ]
+]
+
+fab_package(
+    name = "bare",
+    drill = "board/drill/main.drl",
+    gerbers = ":gerbers",
+    vendor = "jlcpcb",
+)
+
+fab_report(
+    name = "jlcpcb_report",
+    package = ":jlcpcb",
+)
+
+fab_report(
+    name = "pcbway_report",
+    package = ":pcbway",
+    px_per_mm = 5,
+)
+
+fab_report(
+    name = "bare_report",
+    package = ":bare",
+    px_per_mm = 5,
+)
+
+# Gerbers with nothing on them: a report that says so, not a failure.
+fab_report(
+    name = "empty_report",
+    package = "//tests/fab_package:jlcpcb",
+    px_per_mm = 5,
+)
+
+go_test(
+    name = "report_test",
+    size = "small",
+    srcs = ["report_test.go"],
+    args = [
+        "--jlcpcb=$(rlocationpath :jlcpcb_report)",
+        "--pcbway=$(rlocationpath :pcbway_report)",
+        "--bare=$(rlocationpath :bare_report)",
+        "--empty=$(rlocationpath :empty_report)",
+    ],
+    data = [
+        ":bare_report",
+        ":empty_report",
+        ":jlcpcb_report",
+        ":pcbway_report",
+    ],
+    pure = "on",
+    deps = ["@rules_go//go/runfiles"],
+)
+
+determinism_test(
+    name = "jlcpcb_report_determinism_test",
+    size = "small",
+    target = ":jlcpcb_report",
+)
+
+# A resolution out of range fails analysis.
+[
+    (
+        fab_report(
+            name = "px_%d" % px,
+            package = ":jlcpcb",
+            px_per_mm = px,
+            tags = ["manual"],
+        ),
+        fails_test(
+            name = "px_%d_test" % px,
+            size = "small",
+            message = "px_per_mm %d: want 1 to 100" % px,
+            target_under_test = ":px_%d" % px,
+        ),
+    )
+    for px in [
+        0,
+        101,
+    ]
+]

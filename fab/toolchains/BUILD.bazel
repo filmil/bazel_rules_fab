@@ -31,6 +31,7 @@ helpers_toolchain(
     launcher = "//fab/private/launcher",
     packager = "//fab/private/packager:cmd",
     pkgcheck = "//fab/private/pkgcheck:cmd",
+    report = "//fab/private/report:cmd",
     swapcheck = "//fab/private/swapcheck",
     swatch = "//fab/private/swatch:cmd",
 )

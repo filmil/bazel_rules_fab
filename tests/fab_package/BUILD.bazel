@@ -6,7 +6,10 @@
 load("@rules_go//go:def.bzl", "go_test")
 load("//fab:defs.bzl", "determinism_test", "fab_package")
 
-package(default_visibility = ["//tests/fab_package_test:__pkg__"])
+package(default_visibility = [
+    "//tests/fab_package_test:__pkg__",
+    "//tests/fab_report:__pkg__",
+])
 
 exports_files(glob(["board/**"]))
 

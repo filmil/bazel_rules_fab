@@ -3,6 +3,15 @@
 
 load(":run_tool.bzl", "HELPERS_TOOLCHAIN_TYPE", "RUN_TOOL_TOOLCHAINS", "run_tool")
 
+FabPackageInfo = provider(
+    doc = "A fab_package's ZIP, and what it was made for: fab_report reads it.",
+    fields = {
+        "zip": "File: the ZIP.",
+        "vendor": "string: the fab house.",
+        "bare": "bool: a bare board's package, with no BOM or placement list.",
+    },
+)
+
 # The vendors fab_package knows; the packager has a layout for each.
 FAB_PACKAGE_VENDORS = ["jlcpcb", "pcbway"]
 
@@ -52,7 +61,10 @@ def _fab_package_impl(ctx):
         mnemonic = "FabPackage",
         progress_message = "Packaging %{label} for " + ctx.attr.vendor,
     )
-    return [DefaultInfo(files = depset([out]))]
+    return [
+        DefaultInfo(files = depset([out])),
+        FabPackageInfo(zip = out, vendor = ctx.attr.vendor, bare = bare),
+    ]
 
 fab_package = rule(
     implementation = _fab_package_impl,
@@ -149,5 +161,6 @@ default: hdlf_rules_fab ships no table yet.
                   "default.",
         ),
     },
+    provides = [FabPackageInfo],
     toolchains = RUN_TOOL_TOOLCHAINS,
 )

@@ -11,6 +11,7 @@ bzl_library(
         "fab_rules.bzl",
         "package.bzl",
         "package_test.bzl",
+        "report.bzl",
         "run_tool.bzl",
         "swap_test.bzl",
         "swatch.bzl",

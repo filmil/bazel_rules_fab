@@ -33,12 +33,15 @@ def _helpers_toolchain_impl(ctx):
         "assembly": ctx.attr.assembly[DefaultInfo].files_to_run,
         # fab_swatch's generator (issue #24).
         "swatch": ctx.attr.swatch[DefaultInfo].files_to_run,
+        # fab_report's renderer and report writer (issue #43).
+        "report": ctx.attr.report[DefaultInfo].files_to_run,
     })]
 
 helpers_toolchain = rule(
     implementation = _helpers_toolchain_impl,
     doc = "The helpers toolchain: the launcher, the swap checker, the determinism comparer, " +
-          "fab_package's packager, fab_package_test's checker and fab_swatch's generator.",
+          "fab_package's packager, fab_package_test's checker, fab_swatch's generator and " +
+          "fab_report's tool.",
     attrs = {
         "launcher": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "swapcheck": attr.label(mandatory = True, executable = True, cfg = "exec"),
@@ -47,6 +50,7 @@ helpers_toolchain = rule(
         "assembly": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "pkgcheck": attr.label(mandatory = True, executable = True, cfg = "exec"),
         "swatch": attr.label(mandatory = True, executable = True, cfg = "exec"),
+        "report": attr.label(mandatory = True, executable = True, cfg = "exec"),
     },
 )
 
