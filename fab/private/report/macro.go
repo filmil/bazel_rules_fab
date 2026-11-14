@@ -91,6 +91,9 @@ func evalMacro(body []string, v []float64, scale float64) ([]prim, error) {
 				return nil, err
 			}
 			n := int(a[1])
+			if n < 1 {
+				return nil, fmt.Errorf("%q: an outline of %d vertices", w, n)
+			}
 			if err := need(2 + 2*(n+1) + 1); err != nil {
 				return nil, err
 			}
@@ -123,18 +126,13 @@ func evalMacro(body []string, v []float64, scale float64) ([]prim, error) {
 			if err := need(5); err != nil {
 				return nil, err
 			}
-			c := rotate(Pt{mm(0), mm(1)}, rot(5))
-			ro, ri, g := mm(2)/2, mm(3)/2, mm(4)/2
-			out = append(out,
-				prim{kind: circle, p: []Pt{c}, r: ro, dark: true},
-				prim{kind: circle, p: []Pt{c}, r: ri})
-			for _, t := range []float64{0, 90} {
-				box := []Pt{{-ro, -g}, {ro, -g}, {ro, g}, {-ro, g}}
-				for k := range box {
-					box[k] = rotate(box[k], t)
-					box[k] = rotate(Pt{box[k].X + mm(0), box[k].Y + mm(1)}, rot(5))
+			// Four dark ring segments; the centre and the gaps leave the
+			// macro's other shapes as they are.
+			for _, seg := range thermal(mm(2)/2, mm(3)/2, mm(4)/2) {
+				for k := range seg {
+					seg[k] = rotate(Pt{seg[k].X + mm(0), seg[k].Y + mm(1)}, rot(5))
 				}
-				out = append(out, prim{kind: polygon, p: box})
+				out = append(out, prim{kind: polygon, p: seg, dark: true})
 			}
 		case 20: // exposure, width, x1, y1, x2, y2, rotation
 			if err := need(6); err != nil {
@@ -165,6 +163,41 @@ func evalMacro(body []string, v []float64, scale float64) ([]prim, error) {
 		}
 	}
 	return out, nil
+}
+
+// thermal returns a thermal's four ring segments, centred on the origin:
+// the ring of radii ro and ri without the bands |x| < g and |y| < g.
+func thermal(ro, ri, g float64) [][]Pt {
+	var segs [][]Pt
+	if g >= ro || ri >= ro {
+		return nil
+	}
+	// One segment, in the first quadrant: the outer arc from the X gap to
+	// the Y gap, then back along the inner arc (or the gaps' corner).
+	ao := math.Asin(g / ro)
+	var first []Pt
+	const n = 45
+	for k := 0; k <= n; k++ {
+		t := ao + (math.Pi/2-2*ao)*float64(k)/n
+		first = append(first, Pt{ro * math.Cos(t), ro * math.Sin(t)})
+	}
+	if g < ri {
+		ai := math.Asin(g / ri)
+		for k := n; k >= 0; k-- {
+			t := ai + (math.Pi/2-2*ai)*float64(k)/n
+			first = append(first, Pt{ri * math.Cos(t), ri * math.Sin(t)})
+		}
+	} else {
+		first = append(first, Pt{g, g})
+	}
+	for q := 0; q < 4; q++ {
+		seg := make([]Pt, len(first))
+		for k, p := range first {
+			seg[k] = rotate(p, 90*float64(q))
+		}
+		segs = append(segs, seg)
+	}
+	return segs
 }
 
 // band is the rectangle of half-width hw along s-e, square ends, turned

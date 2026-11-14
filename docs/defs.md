@@ -198,11 +198,19 @@ sent to the fab house, not the KiCad source:
 
 The Gerber reader draws what KiCad writes: apertures C, R, O and P,
 aperture macros (primitives 1, 4, 5, 7, 20, 21), lines, multi-quadrant
-arcs, regions and dark and clear polarity, in absolute coordinates. It
-fails on what it would not draw right: incremental coordinates,
-single-quadrant arcs, step and repeat, and aperture transformations. The
-drill reader takes decimal coordinates and G85 slots, with the plating
-from KiCad's `TA.AperFunction` comments.
+arcs, regions and dark and clear polarity, in absolute coordinates with
+leading zeros left out (`FSLA`). It fails on what it would not draw
+right: other formats (such as `FST`), incremental coordinates,
+single-quadrant arcs, step and repeat, aperture transformations, a
+coordinate with no D code, and macro primitives 6 and 22. The drill
+reader takes decimal coordinates and G85 slots, with the plating from
+KiCad's `TA.AperFunction` comments; it fails on coordinates with no
+decimal point and on routed slots (`G00`, `M15`), which KiCad writes only
+when its oval-hole option is set to route.
+
+The renders take a byte a sample, 9 samples a pixel: a board of more than
+about 250 x 250 mm at the default resolution fails, and takes a lower
+`px_per_mm`.
 
 The same package gives the same bytes: the images hold no time, and the
 output is checked with `determinism_test`.

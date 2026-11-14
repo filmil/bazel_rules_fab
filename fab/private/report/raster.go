@@ -223,6 +223,13 @@ func Loops(segs [][2]Pt) ([][]Pt, error) {
 	type key struct{ x, y int64 }
 	k := func(p Pt) key { return key{int64(math.Round(p.X * 1e4)), int64(math.Round(p.Y * 1e4))} }
 	at := map[key][]int{}
+	var kept [][2]Pt
+	for _, s := range segs {
+		if k(s[0]) != k(s[1]) { // a zero-length stroke joins nothing
+			kept = append(kept, s)
+		}
+	}
+	segs = kept
 	for i, s := range segs {
 		at[k(s[0])] = append(at[k(s[0])], i)
 		at[k(s[1])] = append(at[k(s[1])], i)

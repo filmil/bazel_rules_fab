@@ -100,6 +100,36 @@ func TestApertures(t *testing.T) {
 		"D10*\nX1000000Y0D03*\nM02*\n", 0, -1, 2, 1), want, 0.02)
 }
 
+func TestMorePrimitives(t *testing.T) {
+	// A hexagon of 2 mm across the corners: 3√3/2 r².
+	hex := 3 * math.Sqrt(3) / 2
+	near(t, "P flash", area(t, header+"%ADD10P,2.000000X6X0*%\nD10*\nX0Y0D03*\nM02*\n", -1, -1, 1, 1), hex, 0.02)
+	near(t, "macro polygon", area(t, header+"%AMH*\n5,1,6,0,0,2,0*%\n%ADD10H*%\nD10*\nX0Y0D03*\nM02*\n", -1, -1, 1, 1),
+		hex, 0.02)
+	// A centre line 2 x 1, turned 90°: still 2 mm².
+	near(t, "centre line", area(t, header+"%AMB*\n21,1,2,1,0,0,90*%\n%ADD10B*%\nD10*\nX0Y0D03*\nM02*\n", -1, -1, 1, 1),
+		2, 0.02)
+	// $n=: a variable set in the macro.
+	near(t, "variable", area(t, header+"%AMV*\n$2=$1x2*\n1,1,$2,0,0*%\n%ADD10V,0.5*%\nD10*\nX0Y0D03*\nM02*\n", -1, -1, 1, 1),
+		math.Pi/4, 0.02)
+	// A thermal (outer 2, inner 1, gap 0.2): the ring less its gaps.
+	ring := math.Pi*(1-0.25) - 4*0.2*(1-0.5)
+	near(t, "thermal", area(t, header+"%AMT*\n7,0,0,2,1,0.2,0*%\n%ADD10T*%\nD10*\nX0Y0D03*\nM02*\n", -1.5, -1.5, 1.5, 1.5),
+		ring, 0.03)
+	// A thermal leaves dark an earlier primitive inside its centre.
+	near(t, "thermal over a square", area(t, header+"%AMS*\n21,1,0.6,0.6,0,0,0*\n7,0,0,2,1,0.2,0*%\n%ADD10S*%\nD10*\nX0Y0D03*\nM02*\n",
+		-1.5, -1.5, 1.5, 1.5), ring+0.36, 0.03)
+	// Inches, in a block with the format.
+	near(t, "inches", area(t, "%FSLAX24Y24*MOIN*%\n%ADD10R,0.1X0.1*%\nD10*\nX0Y0D03*\nM02*\n", -2, -2, 2, 2),
+		2.54*2.54, 0.02)
+	// G4 is a comment, as G04 is; a word may run over lines.
+	near(t, "G4, wrapped", area(t, header+"G4 a comment*\n%ADD10C,1.0*%\nD10*\nX0\nY0D03*\nM02*\n", -1, -1, 1, 1),
+		math.Pi/4, 0.02)
+	if _, err := ParseGerber([]byte(header + "%AMX*\n4,1,-3,0*%\n%ADD10X*%\nM02*\n")); err == nil {
+		t.Error("an outline of -3 vertices: no error")
+	}
+}
+
 func TestStrokes(t *testing.T) {
 	// A 0.2 mm line 10 mm long: a 10 x 0.2 band and two half circles.
 	near(t, "line", area(t, header+"%ADD10C,0.200000*%\nD10*\nX0Y0D02*\nX10000000Y0D01*\nM02*\n", 0, -1, 10, 1),
@@ -191,6 +221,19 @@ func TestExcellon(t *testing.T) {
 	if s := d.Tools[2].Slots[0]; s[0] != (Pt{3, -8.18}) || s[1] != (Pt{2.2, -8.18}) {
 		t.Errorf("slot %v", s)
 	}
+	inline, err := ParseExcellon([]byte("M48\nMETRIC\nT1C0.3\n%\nT1\nX1.0Y1.0\nT2C0.8\nX2.0Y2.0\nT1C0.3\nX3.0Y3.0\nM30\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inline.Tools) != 2 || len(inline.Tools[0].Holes) != 2 || len(inline.Tools[1].Holes) != 1 {
+		t.Errorf("tools defined in the body: %+v %+v", inline.Tools[0], inline.Tools[1])
+	}
+	if _, err := ParseExcellon([]byte("M48\nMETRIC\nT1C0.3\n%\nT1C0.5\nM30\n")); err == nil {
+		t.Error("T1 defined again with another diameter: no error")
+	}
+	if _, err := ParseExcellon([]byte("M48\nMETRIC\nT1C0.3\n%\nT1\nG00X1.0Y1.0\nM15\n")); err == nil {
+		t.Error("a routed slot: no error")
+	}
 	if _, err := ParseExcellon([]byte("M48\nMETRIC\nT1C0.3\n%\nT1\nX100Y200\n")); err == nil {
 		t.Error("coordinates with no decimal point: no error")
 	}
@@ -235,7 +278,7 @@ func testZip(t *testing.T, bare bool) []byte {
 		"b.drl":              drill,
 	}
 	if !bare {
-		files["b_bom.csv"] = "Comment,Designator,Footprint,LCSC Part #\n1u,\"C1,C2\",C_0603,C15849\n"
+		files["b_bom.csv"] = "Comment,Designator,Footprint,LCSC Part #\n1u,\"C1,C2\",C_0603,C15849\n10k,R7,R_0603,C25804\n"
 		files["b_cpl.csv"] = "Designator,Mid X,Mid Y,Layer,Rotation\nC1,5.0000mm,5.0000mm,Top,0\nC2,15.0000mm,5.0000mm,Bottom,90\nR9,1.0000mm,1.0000mm,Top,0\n"
 	}
 	var buf bytes.Buffer
@@ -278,7 +321,9 @@ func TestMake(t *testing.T) {
 		"| `b.drl` | T2 | 2.700 | NPTH | 1 | 0 |",
 		"3 holes and 1 slot; the smallest drill is 0.300 mm.",
 		"| 1u | C1,C2 | C_0603 | C15849 |",
-		"1 lines, 2 parts",
+		"Size: 20.00 x 10.00 mm (the outline's box).",
+		"2 lines, 3 parts",
+		"In the BOM but not placed: R7.",
 		"| Top | 2 |",
 		"| Bottom | 1 |",
 		"Placed but not in the BOM: R9.",
@@ -321,5 +366,42 @@ func TestMakeBare(t *testing.T) {
 	md, _ = os.ReadFile(filepath.Join(dir, "report.md"))
 	if !strings.Contains(string(md), "Result: 2 problems:") {
 		t.Errorf("report.md does not list the 2 problems:\n%s", md)
+	}
+}
+
+func TestOddZip(t *testing.T) {
+	// A file in a folder, a folder entry, and a name with a space: the
+	// report is written, inside its directory, and the checker's problem
+	// is listed.
+	var buf bytes.Buffer
+	z := zip.NewWriter(&buf)
+	for name, body := range map[string]string{
+		"sub/":             "",
+		"sub/../x.gtl":     gerberFile("Copper,L1,Top", "%ADD10C,1.0*%\nD10*\nX0Y0D03*\n"),
+		"my board.gm1":     gerberFile("Profile,NP", ""),
+		".hidden-B_Cu.gbl": gerberFile("Copper,L2,Bot", ""),
+	} {
+		w, _ := z.Create(name)
+		w.Write([]byte(body))
+	}
+	z.Close()
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out")
+	if err := Make(buf.Bytes(), Options{Vendor: "jlcpcb", Bare: true, PxPerMM: 5, Name: "odd.zip"}, out); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Errorf("Make wrote outside its directory: %v", entries)
+	}
+	md, _ := os.ReadFile(filepath.Join(out, "report.md"))
+	for _, want := range []string{"[sub_.._x.gtl.png](sub_.._x.gtl.png)", "(my%20board.gm1.png)",
+		"(_.hidden-B_Cu.gbl.png)", "has nothing on it", "(the box of what is drawn)", "not at the ZIP's root"} {
+		if !strings.Contains(string(md), want) {
+			t.Errorf("report.md has no %q:\n%s", want, md)
+		}
+	}
+	if err := Make(buf.Bytes(), Options{Vendor: "jlcpcb", PxPerMM: 101}, out); err == nil {
+		t.Error("101 pixels per mm: no error")
 	}
 }

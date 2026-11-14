@@ -8,6 +8,7 @@
 # configurations.
 load("@rules_go//go:def.bzl", "go_test")
 load("//fab:defs.bzl", "determinism_test", "fab_package", "fab_report")
+load("//tests/fab_rules:fails_test.bzl", "fails_test")
 
 filegroup(
     name = "gerbers",
@@ -86,3 +87,25 @@ determinism_test(
     size = "small",
     target = ":jlcpcb_report",
 )
+
+# A resolution out of range fails analysis.
+[
+    (
+        fab_report(
+            name = "px_%d" % px,
+            package = ":jlcpcb",
+            px_per_mm = px,
+            tags = ["manual"],
+        ),
+        fails_test(
+            name = "px_%d_test" % px,
+            size = "small",
+            message = "px_per_mm %d: want 1 to 100" % px,
+            target_under_test = ":px_%d" % px,
+        ),
+    )
+    for px in [
+        0,
+        101,
+    ]
+]

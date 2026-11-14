@@ -161,5 +161,6 @@ default: hdlf_rules_fab ships no table yet.
                   "default.",
         ),
     },
+    provides = [FabPackageInfo],
     toolchains = RUN_TOOL_TOOLCHAINS,
 )

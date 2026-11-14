@@ -89,11 +89,7 @@ func ParseExcellon(data []byte) (*Drill, error) {
 				return nil, where(fmt.Errorf("bad tool number"))
 			}
 			rest := line[i:]
-			if header || strings.Contains(rest, "C") {
-				k := strings.IndexByte(rest, 'C')
-				if k < 0 {
-					return nil, where(fmt.Errorf("a tool with no diameter"))
-				}
+			if k := strings.IndexByte(rest, 'C'); k >= 0 {
 				end := k + 1
 				for end < len(rest) && (rest[end] >= '0' && rest[end] <= '9' || rest[end] == '.') {
 					end++
@@ -102,9 +98,19 @@ func ParseExcellon(data []byte) (*Drill, error) {
 				if err != nil {
 					return nil, where(err)
 				}
-				byCode[code] = &Tool{Code: code, Diameter: d * scale, Plated: plating}
+				switch t, ok := byCode[code]; {
+				case !ok:
+					byCode[code] = &Tool{Code: code, Diameter: d * scale, Plated: plating}
+				case t.Diameter != d*scale:
+					return nil, where(fmt.Errorf("tool T%d defined again with another diameter", code))
+				}
 				plating = ""
-				continue
+				if header {
+					continue
+				}
+				// A definition in the body also selects the tool.
+			} else if header {
+				return nil, where(fmt.Errorf("a tool with no diameter"))
 			}
 			if code == 0 {
 				cur = nil

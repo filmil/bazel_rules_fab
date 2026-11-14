@@ -41,8 +41,9 @@ type Layer struct {
 	// "Copper,L1,Top"; empty if it has none.
 	Function string
 	Objects  []Object
-	// Path is the centre line of every stroke (D01), arcs as short
-	// segments: the board outline, for a profile layer.
+	// Path is the centre line of every stroke (D01) and the edges of
+	// every region, arcs as short segments: the board outline, for a
+	// profile layer.
 	Path [][2]Pt
 }
 
@@ -112,7 +113,7 @@ func (g *gerber) run(s string) error {
 			if j < 0 {
 				return fmt.Errorf("a word with no closing *: %.40q", s[i:])
 			}
-			if err := g.word(strings.TrimSpace(s[i : i+j])); err != nil {
+			if err := g.word(clean(strings.TrimSpace(s[i : i+j]))); err != nil {
 				return err
 			}
 			i += j + 1
@@ -141,7 +142,20 @@ func (g *gerber) extended(body string) error {
 	if len(words) == 0 {
 		return nil
 	}
-	w := words[0]
+	if strings.HasPrefix(words[0], "AM") {
+		g.macros[words[0][2:]] = words[1:]
+		return nil
+	}
+	// Older files put several commands in one block: %FSLAX24Y24*MOIN*%.
+	for _, w := range words {
+		if err := g.command(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *gerber) command(w string) error {
 	switch {
 	case strings.HasPrefix(w, "FS"):
 		return g.format(w)
@@ -149,8 +163,6 @@ func (g *gerber) extended(body string) error {
 		g.scale = 1
 	case w == "MOIN":
 		g.scale = 25.4
-	case strings.HasPrefix(w, "AM"):
-		g.macros[w[2:]] = words[1:]
 	case strings.HasPrefix(w, "AD"):
 		return g.define(w)
 	case w == "LPD":
@@ -299,7 +311,7 @@ func (g *gerber) word(w string) error {
 	if w == "" {
 		return nil
 	}
-	if strings.HasPrefix(w, "G04") {
+	if strings.HasPrefix(w, "G04") || strings.HasPrefix(w, "G4") && (len(w) == 2 || w[2] < '0' || w[2] > '9') {
 		return nil
 	}
 	// Leading G codes; older files put them before coordinates.
@@ -418,6 +430,9 @@ func (g *gerber) coord(s string, dec int) (float64, error) {
 
 func (g *gerber) closeContour() {
 	if len(g.contour) >= 3 {
+		for k := range g.contour {
+			g.layer.Path = append(g.layer.Path, [2]Pt{g.contour[k], g.contour[(k+1)%len(g.contour)]})
+		}
 		g.layer.Objects = append(g.layer.Objects, Object{
 			Dark:  g.dark,
 			prims: []prim{{kind: polygon, p: g.contour, dark: true}},

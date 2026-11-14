@@ -17,6 +17,7 @@ import (
 	"image/png"
 	"io"
 	"math"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -92,6 +93,11 @@ var (
 	hole      = color.NRGBA{0x20, 0x20, 0x20, 0xff}
 )
 
+// maxSamples bounds a mask (a byte a sample): 300 MB, a 250 x 250 mm board
+// at the default 20 pixels per mm. A larger board takes a lower
+// px_per_mm.
+const maxSamples = 300_000_000
+
 type file struct {
 	name, ext string
 	data      []byte
@@ -103,8 +109,8 @@ type file struct {
 // Make writes the report into dir: report.md, top.png, bottom.png and
 // <file>.png for each Gerber and drill file of the ZIP.
 func Make(zipData []byte, o Options, dir string) error {
-	if o.PxPerMM < 1 {
-		return fmt.Errorf("pixels per mm %d: want 1 or more", o.PxPerMM)
+	if o.PxPerMM < 1 || o.PxPerMM > 100 {
+		return fmt.Errorf("pixels per mm %d: want 1 to 100", o.PxPerMM)
 	}
 	z, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
@@ -113,6 +119,9 @@ func Make(zipData []byte, o Options, dir string) error {
 	var files []*file
 	var others []*file
 	for _, zf := range z.File {
+		if zf.FileInfo().IsDir() {
+			continue
+		}
 		r, err := zf.Open()
 		if err != nil {
 			return err
@@ -160,6 +169,9 @@ func Make(zipData []byte, o Options, dir string) error {
 		minX, maxX = math.Min(minX, p.X), math.Max(maxX, p.X)
 		minY, maxY = math.Min(minY, p.Y), math.Max(maxY, p.Y)
 	}
+	if outline != nil && len(outline.layer.Path) == 0 {
+		notes = append(notes, fmt.Sprintf("The outline, %s, has nothing on it: the board is drawn as the box of its layers.", outline.name))
+	}
 	if outline != nil {
 		for _, s := range outline.layer.Path {
 			grow(s[0])
@@ -183,14 +195,35 @@ func Make(zipData []byte, o Options, dir string) error {
 					grow(Pt{c, d})
 				}
 			}
+			if f.drill != nil {
+				for _, t := range f.drill.Tools {
+					r := t.Diameter / 2
+					for _, h := range t.Holes {
+						grow(Pt{h.X - r, h.Y - r})
+						grow(Pt{h.X + r, h.Y + r})
+					}
+					for _, s := range t.Slots {
+						for _, h := range s {
+							grow(Pt{h.X - r, h.Y - r})
+							grow(Pt{h.X + r, h.Y + r})
+						}
+					}
+				}
+			}
 		}
 	}
+	outlined := loops != nil
 	empty := math.IsInf(minX, 1)
 	if empty {
 		notes = append(notes, "Nothing to draw: the outline and every layer are empty.")
 		minX, minY, maxX, maxY = 0, 0, 1, 1
 	}
 	frame := NewFrame(minX, minY, maxX, maxY, 1, o.PxPerMM)
+	if n := int64(frame.W) * int64(frame.H) * SS * SS; n > maxSamples {
+		return fmt.Errorf("the renders of a %s x %s mm board at %d pixels per mm need %d samples a layer, "+
+			"more than %d: give a lower px_per_mm, or check the outline for a stray point",
+			mmf(maxX-minX), mmf(maxY-minY), o.PxPerMM, n, int64(maxSamples))
+	}
 	board := NewMask(frame)
 	if loops != nil {
 		board.FillLoops(loops)
@@ -198,14 +231,6 @@ func Make(zipData []byte, o Options, dir string) error {
 		board.FillLoops([][]Pt{{{minX, minY}, {maxX, minY}, {maxX, maxY}, {minX, maxY}}})
 	}
 
-	for _, f := range files {
-		f.mask = NewMask(frame)
-		if f.drill != nil {
-			f.mask.DrawDrill(f.drill)
-		} else {
-			f.mask.Draw(f.layer)
-		}
-	}
 	drills := NewMask(frame)
 	for _, f := range files {
 		if f.drill != nil {
@@ -223,8 +248,14 @@ func Make(zipData []byte, o Options, dir string) error {
 		}
 		return os.WriteFile(filepath.Join(dir, name), buf.Bytes(), 0o644)
 	}
+	// One layer's mask at a time; only the composites' six stay.
 	for _, f := range files {
-		m := f.mask
+		m := NewMask(frame)
+		if f.drill != nil {
+			m.DrawDrill(f.drill)
+		} else {
+			m.Draw(f.layer)
+		}
 		isEdge := f.ext == ".gm1"
 		img := Paint(frame, false, func(at func(*Mask) bool) color.NRGBA {
 			switch {
@@ -237,8 +268,14 @@ func Make(zipData []byte, o Options, dir string) error {
 			}
 			return white
 		})
-		if err := save(f.name+".png", img); err != nil {
+		if err := save(pngName(f.name), img); err != nil {
 			return err
+		}
+		switch f.ext {
+		case ".gtl", ".gts", ".gto", ".gbl", ".gbs", ".gbo":
+			if byExt[f.ext] == f {
+				f.mask = m
+			}
 		}
 	}
 	for _, side := range []struct {
@@ -286,7 +323,7 @@ func Make(zipData []byte, o Options, dir string) error {
 	if empty {
 		minX, minY, maxX, maxY = 0, 0, 0, 0
 	}
-	md, err := markdown(o, files, others, zipData, minX, minY, maxX, maxY, notes)
+	md, err := markdown(o, files, others, zipData, minX, minY, maxX, maxY, outlined, notes)
 	if err != nil {
 		return err
 	}
@@ -299,7 +336,8 @@ func cell(s string) string {
 	return strings.NewReplacer("|", `\|`, "\n", " ").Replace(s)
 }
 
-func markdown(o Options, files, others []*file, zipData []byte, minX, minY, maxX, maxY float64, notes []string) (string, error) {
+func markdown(o Options, files, others []*file, zipData []byte, minX, minY, maxX, maxY float64, outlined bool,
+	notes []string) (string, error) {
 	var b strings.Builder
 	p := func(f string, a ...any) { fmt.Fprintf(&b, f, a...) }
 	p("# %s\n\n", o.Name)
@@ -314,7 +352,11 @@ func markdown(o Options, files, others []*file, zipData []byte, minX, minY, maxX
 	}
 	p("## Board\n\n")
 	if maxX > minX || maxY > minY {
-		p("* Size: %s x %s mm (the outline's box).\n", mmf(maxX-minX), mmf(maxY-minY))
+		box := "the outline's box"
+		if !outlined {
+			box = "the box of what is drawn"
+		}
+		p("* Size: %s x %s mm (%s).\n", mmf(maxX-minX), mmf(maxY-minY), box)
 	}
 	p("* Copper layers: %d.\n", copper)
 	for _, n := range notes {
@@ -330,7 +372,8 @@ func markdown(o Options, files, others []*file, zipData []byte, minX, minY, maxX
 	p("Each file, seen from the top, as drawn:\n\n")
 	p("| File | Holds | Bytes | Render |\n|---|---|---:|---|\n")
 	for _, f := range files {
-		p("| `%s` | %s | %d | [%s.png](%s.png) |\n", cell(f.name), what(f.ext), len(f.data), cell(f.name), f.name)
+		p("| `%s` | %s | %d | [%s](%s) |\n", cell(f.name), what(f.ext), len(f.data), cell(pngName(f.name)),
+			url.PathEscape(pngName(f.name)))
 	}
 	for _, f := range others {
 		p("| `%s` | %s | %d | |\n", cell(f.name), "table", len(f.data))
@@ -474,6 +517,16 @@ func markdown(o Options, files, others []*file, zipData []byte, minX, minY, maxX
 		}
 	}
 	return b.String(), nil
+}
+
+// pngName is a file's render's name: one plain file name in the output
+// directory, whatever path the ZIP gives the file.
+func pngName(name string) string {
+	n := strings.NewReplacer("/", "_", "\\", "_").Replace(name)
+	if strings.HasPrefix(n, ".") {
+		n = "_" + n
+	}
+	return n + ".png"
 }
 
 func count(n int, what string) string {
