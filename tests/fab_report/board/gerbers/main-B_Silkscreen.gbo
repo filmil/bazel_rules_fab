@@ -1,0 +1,11 @@
+G04 fab_report fixture, written by hand in KiCad 9's form*
+%TF.FileFunction,Legend,Bot*%
+%FSLAX46Y46*%
+%MOMM*%
+%LPD*%
+G01*
+%ADD10C,0.120000*%
+D10*
+X116200000Y-99000000D02*
+X116200000Y-101000000D01*
+M02*

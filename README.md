@@ -96,6 +96,22 @@ fab_package_test(
 )
 ```
 
+`fab_report` makes a package readable by people: `bazel build
+:jlcpcb_report` writes a directory with a PNG of each Gerber layer and
+drill file, the board's top and bottom as the fab will make them, and
+`report.md`. The report gives the board's size and layers, the drill table,
+the BOM and the parts on each side, and the checks of `fab_package_test`.
+All of it is drawn from the ZIP, so it shows what is sent.
+
+```starlark
+load("@hdlf_rules_fab//fab:defs.bzl", "fab_report")
+
+fab_report(
+    name = "jlcpcb_report",
+    package = ":jlcpcb",
+)
+```
+
 ### Capability swatch
 
 `fab_swatch` is a credit-card board of a fab house's smallest features,

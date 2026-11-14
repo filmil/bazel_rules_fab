@@ -1,0 +1,43 @@
+G04 fab_report fixture, written by hand in KiCad 9's form*
+%TF.FileFunction,Copper,L2,Bot*%
+%FSLAX46Y46*%
+%MOMM*%
+%LPD*%
+G01*
+%AMRoundRect*
+0 Rectangle with rounded corners*
+0 $1 Rounding radius*
+0 $2 $3 $4 $5 $6 $7 $8 $9 X,Y pos of 4 corners*
+0 Add a 4 corners polygon primitive as box body*
+4,1,4,$2,$3,$4,$5,$6,$7,$8,$9,$2,$3,0*
+0 Add four circle primitives for the rounded corners*
+1,1,$1+$1,$2,$3*
+1,1,$1+$1,$4,$5*
+1,1,$1+$1,$6,$7*
+1,1,$1+$1,$8,$9*
+0 Add four rect primitives between the rounded corners*
+20,1,$1+$1,$2,$3,$4,$5,0*
+20,1,$1+$1,$4,$5,$6,$7,0*
+20,1,$1+$1,$6,$7,$8,$9,0*
+20,1,$1+$1,$8,$9,$2,$3,0*%
+%ADD10C,1.700000*%
+%ADD11R,1.700000X1.700000*%
+%ADD12RoundRect,0.200000X-0.200000X-0.275000X0.200000X-0.275000X0.200000X0.275000X-0.200000X0.275000X0*%
+%ADD13RoundRect,0.200000X-0.275000X0.200000X-0.275000X-0.200000X0.275000X-0.200000X0.275000X0.200000X0*%
+%ADD14C,0.600000*%
+%ADD15C,0.250000*%
+D11*
+X105000000Y-100000000D03*
+D10*
+X105000000Y-102540000D03*
+D13*
+X115000000Y-99225000D03*
+X115000000Y-100775000D03*
+D14*
+X110000000Y-104000000D03*
+D15*
+X110000000Y-104000000D02*
+X113000000Y-104000000D01*
+X115000000Y-102000000D01*
+X115000000Y-100775000D01*
+M02*

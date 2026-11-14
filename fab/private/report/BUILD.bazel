@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+# fab_report's tool (issue #43): reads a fab package's Gerber, drill and
+# CSV files, draws each layer and both sides, and writes a Markdown
+# report. Pure Go, built from source.
+go_library(
+    name = "report",
+    srcs = [
+        "excellon.go",
+        "gerber.go",
+        "macro.go",
+        "raster.go",
+        "report.go",
+    ],
+    importpath = "github.com/filmil/bazel_rules_fab/fab/private/report",
+    visibility = ["//visibility:private"],
+    deps = ["//fab/private/pkgcheck"],
+)
+
+go_test(
+    name = "report_test",
+    size = "small",
+    srcs = ["report_test.go"],
+    embed = [":report"],
+    pure = "on",
+)
+
+go_binary(
+    name = "cmd",
+    srcs = ["cmd/main.go"],
+    pure = "on",
+    visibility = ["//fab/toolchains:__pkg__"],
+    deps = [":report"],
+)
